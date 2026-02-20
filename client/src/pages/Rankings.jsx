@@ -13,7 +13,7 @@ const Rankings = () => {
         // Fetch Games for tabs
         const fetchGames = async () => {
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/games`);
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/games`);
                 const data = await res.json();
                 setGames(data);
             } catch (err) {
@@ -27,7 +27,7 @@ const Rankings = () => {
         const fetchLeaderboard = async () => {
             setLoading(true);
             try {
-                let url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/leaderboard`;
+                let url = `${import.meta.env.VITE_API_URL}/api/v1/leaderboard`;
                 if (activeGameId !== 'global') {
                     url += `/${activeGameId}`;
                 }

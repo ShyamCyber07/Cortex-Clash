@@ -21,6 +21,10 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 
 const app = express();
+
+// Trust proxy for Render deployment
+app.set("trust proxy", 1);
+
 const server = http.createServer(app);
 
 // Initialize Socket.io
@@ -30,10 +34,25 @@ const io = socket.init(server);
 app.use(helmet());
 
 // CORS
-app.use(cors({
-    origin: config.clientUrl,
-    credentials: true
-}));
+const allowedOrigins = [
+    "http://localhost:5173", // local dev
+    "https://shyamcyber07.github.io"
+];
+
+app.use(
+    cors({
+        origin: function (origin, callback) {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
+        credentials: true
+    })
+);
+
+app.options("*", cors());
 
 // Body parser
 app.use(express.json({ limit: '10kb' }));

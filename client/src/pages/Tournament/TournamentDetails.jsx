@@ -18,7 +18,7 @@ const TournamentDetails = () => {
 
     const fetchTournament = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/tournaments/${id}`);
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/tournaments/${id}`);
             const data = await response.json();
             setTournament(data);
         } catch (error) {
@@ -38,7 +38,7 @@ const TournamentDetails = () => {
 
         setActionLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/tournaments/${id}/join`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/tournaments/${id}/join`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -63,7 +63,7 @@ const TournamentDetails = () => {
 
         setActionLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/tournaments/${id}/start`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/tournaments/${id}/start`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`

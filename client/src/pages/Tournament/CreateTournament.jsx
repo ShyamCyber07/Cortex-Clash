@@ -22,7 +22,7 @@ const CreateTournament = () => {
     useEffect(() => {
         const fetchGames = async () => {
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/games`);
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/games`);
                 const data = await res.json();
                 setGames(data);
                 if (data.length > 0) {
@@ -57,7 +57,7 @@ const CreateTournament = () => {
         const token = localStorage.getItem('token');
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/tournaments`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/tournaments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

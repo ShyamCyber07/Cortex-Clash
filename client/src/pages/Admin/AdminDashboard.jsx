@@ -58,7 +58,7 @@ const AdminDashboard = () => {
     useEffect(() => {
         const fetchFlagged = async () => {
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/users/flagged`, {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/users/flagged`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
                 if (res.ok) setFlaggedUsers(await res.json());

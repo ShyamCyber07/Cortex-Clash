@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 
 const Debug = () => {
     const [healthStatus, setHealthStatus] = useState('Checking...');
-    const [envVar, setEnvVar] = useState(import.meta.env.VITE_API_URL || 'Not Set (Using Localhost fallback)');
+    const [envVar, setEnvVar] = useState(import.meta.env.VITE_API_URL || 'Not Set');
 
     const checkHealth = async () => {
         try {
-            const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`;
+            const url = `${import.meta.env.VITE_API_URL}`;
             const res = await fetch(url);
             const text = await res.text();
             setHealthStatus(`Success: ${res.status} ${res.statusText} - ${text}`);

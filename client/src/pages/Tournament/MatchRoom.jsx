@@ -25,7 +25,7 @@ const MatchRoom = () => {
     const fetchMatch = async () => {
         setLoading(prev => !match ? true : prev); // Only load full screen first time
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/matches/${id}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/matches/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
@@ -51,7 +51,7 @@ const MatchRoom = () => {
     const fetchPrediction = async () => {
         setLoadingPrediction(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/matches/${id}/prediction`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/matches/${id}/prediction`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             if (response.ok) {
@@ -119,7 +119,7 @@ const MatchRoom = () => {
                 payload.result = { scores: score }; // score state holds the object
             }
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/matches/${id}/result`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/matches/${id}/result`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -145,7 +145,7 @@ const MatchRoom = () => {
         if (!window.confirm('Confirm this result?')) return;
         setSubmitting(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v1/matches/${id}/confirm`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/matches/${id}/confirm`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`

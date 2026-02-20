@@ -24,7 +24,7 @@ function App() {
     <ErrorBoundary>
       <SocketProvider>
         <AuthProvider>
-          <Router>
+          <Router basename="/Cortex-Clash">
             <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-indigo-500 selection:text-white">
               <Navbar />
               <Routes>
