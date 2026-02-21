@@ -1,50 +1,58 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const cors = require('cors');
-const connectDB = require('./config/db');
-const config = require('./config'); // Move config import up
-const userRoutes = require('./routes/userRoutes');
-const tournamentRoutes = require('./routes/tournamentRoutes');
-
+// Load env vars immediately
 dotenv.config();
 
-connectDB().then(() => {
-    require('./seedAdmin')();
-});
-
+const cors = require('cors');
 const http = require('http');
-const socket = require('./socket');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const mongoSanitize = require('mongo-sanitize');
-const xss = require('xss-clean');
 const hpp = require('hpp');
 
+// Local imports
+const connectDB = require('./config/db');
+const config = require('./config');
+const socket = require('./socket');
+const seedAdmin = require('./seedAdmin');
+
+// Route imports
+const userRoutes = require('./routes/userRoutes');
+const tournamentRoutes = require('./routes/tournamentRoutes');
+const gameRoutes = require('./routes/gameRoutes');
+const matchRoutes = require('./routes/matchRoutes');
+const leaderboardRoutes = require('./routes/leaderboardRoutes');
+const seasonRoutes = require('./routes/seasonRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const healthRoutes = require('./routes/healthRoutes');
+
 const app = express();
-
-// Trust proxy for Render deployment
-app.set("trust proxy", 1);
-
 const server = http.createServer(app);
 
-// Initialize Socket.io
-const io = socket.init(server);
+// 1. Trust Proxy (Vital for Render/Heroku to pass correct IP to rate limiter)
+app.set("trust proxy", 1);
 
-// Security Headers
+// 2. Security Headers
 app.use(helmet());
 
-// CORS
+// 3. CORS Configuration
+const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : "";
 const allowedOrigins = [
-    "http://localhost:5173", // local dev
-    "https://shyamcyber07.github.io"
-];
+    "http://localhost:5173",            // Local Frontend
+    "https://shyamcyber07.github.io",   // Production Frontend
+    clientUrl                           // Dynamic via Env Var
+].filter(Boolean);
 
 app.use(
     cors({
         origin: function (origin, callback) {
-            if (!origin || allowedOrigins.includes(origin)) {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+
+            if (allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
+                console.warn(`Blocked CORS for origin: ${origin}`);
                 callback(new Error("Not allowed by CORS"));
             }
         },
@@ -52,9 +60,9 @@ app.use(
     })
 );
 
-app.options("*", cors());
 
-// Body parser
+
+// 4. Body Parsing & Sanitization
 app.use(express.json({ limit: '10kb' }));
 
 // Data sanitization against NoSQL query injection
@@ -65,16 +73,15 @@ app.use((req, res, next) => {
     next();
 });
 
-// Data sanitization against XSS
-// app.use(xss());
-
 // Prevent parameter pollution
 app.use(hpp());
 
-// Rate Limiting
+// 5. Rate Limiting
 const limiter = rateLimit({
     windowMs: 10 * 60 * 1000, // 10 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 app.use('/api', limiter);
 
@@ -86,25 +93,32 @@ const authLimiter = rateLimit({
 app.use('/api/users/login', authLimiter);
 app.use('/api/users/register', authLimiter);
 
-// Routes
-// Routes
+// 6. Socket.io
+const io = socket.init(server);
+
+// 7. Routes
 const apiPrefix = `/api/${config.apiVersion}`;
 
-app.use(`${apiPrefix}`, require('./routes/healthRoutes'));
+app.use(`${apiPrefix}`, healthRoutes);
 app.use(`${apiPrefix}/users`, userRoutes);
 app.use(`${apiPrefix}/tournaments`, tournamentRoutes);
-app.use(`${apiPrefix}/games`, require('./routes/gameRoutes')); // Add Games Route
-app.use(`${apiPrefix}/matches`, require('./routes/matchRoutes'));
-app.use(`${apiPrefix}/leaderboard`, require('./routes/leaderboardRoutes')); // Add Leaderboard Route
-app.use(`${apiPrefix}/seasons`, require('./routes/seasonRoutes')); // Add Season Route
-app.use(`${apiPrefix}/analytics`, require('./routes/analyticsRoutes'));
+app.use(`${apiPrefix}/games`, gameRoutes);
+app.use(`${apiPrefix}/matches`, matchRoutes);
+app.use(`${apiPrefix}/leaderboard`, leaderboardRoutes);
+app.use(`${apiPrefix}/seasons`, seasonRoutes);
+app.use(`${apiPrefix}/analytics`, analyticsRoutes);
 
-// Root route for basic verification
+// Root route
 app.get('/', (req, res) => {
     res.send(`Cortex Clash API ${config.apiVersion} running...`);
 });
 
-// Centralized Error Handling Middleware
+// 404 Catch-all
+app.use((req, res) => {
+    res.status(404).json({ message: "Route not found" });
+});
+
+// 8. Error Handling
 app.use((err, req, res, next) => {
     console.error(`[ERROR] ${err.message}`);
     const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
@@ -114,9 +128,48 @@ app.use((err, req, res, next) => {
     });
 });
 
-const PORT = config.port;
+// 9. Startup Sequence
+const PORT = config.port || 5000;
 
-server.listen(PORT, () => {
-    console.log(`Server running in ${config.env} mode on port ${PORT}`);
-    console.log(`API accessible at http://localhost:${PORT}${apiPrefix}`);
+console.log('Starting Cortex Clash Backend...');
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    console.log('UNHANDLED REJECTION! 💥 Shutting down...');
+    console.log(err.name, err.message);
+    server.close(() => {
+        process.exit(1);
+    });
 });
+
+process.on('uncaughtException', (err) => {
+    console.log('UNCAUGHT EXCEPTION! 💥 Shutting down...');
+    console.log(err.name, err.message);
+    process.exit(1);
+});
+
+
+connectDB()
+    .then(async () => {
+        // Only start server if DB connects
+        try {
+            await seedAdmin();
+        } catch (error) {
+            console.error('Warning: Seed Admin failed:', error.message);
+        }
+
+        server.listen(PORT, () => {
+            console.log(`Server running in ${config.env} mode on port ${PORT}`);
+            console.log(`API accessible at http://localhost:${PORT}${apiPrefix}`);
+            console.log(`Allowed Origins: ${allowedOrigins.join(', ')}`);
+        });
+
+        // Set Keep-Alive timeout to be greater than Render's load balancer timeout (60s)
+        server.keepAliveTimeout = 120000; // 120 seconds
+        server.headersTimeout = 120000; // 120 seconds
+    })
+    .catch((err) => {
+        console.error("FATAL: Failed to connect to Database. Server startup aborted.");
+        console.error(err);
+        process.exit(1);
+    });

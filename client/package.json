@@ -1,9 +1,12 @@
 {
-  "homepage": "https://ShyamCyber07.github.io/Cortex-Clash",
+  "homepage": "https://shyamcyber07.github.io/Cortex-Clash",
   "name": "client",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
