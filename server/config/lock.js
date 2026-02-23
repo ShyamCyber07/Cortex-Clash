@@ -1,12 +1,8 @@
-const Redis = require('ioredis');
 const Redlock = require('redlock').default;
-
-// Retrieve URL directly from Environment so we don't circular-depend on queue.js if queue.js needs redlock later
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-const lockClient = new Redis(redisUrl);
+const { redisConnection } = require('./queue');
 
 const redlock = new Redlock(
-    [lockClient],
+    [redisConnection],
     {
         driftFactor: 0.01,
         retryCount: 10,

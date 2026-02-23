@@ -16,7 +16,6 @@ const { logger, requestLogger } = require('./utils/logger');
 // Local imports
 const connectDB = require('./config/db');
 const config = require('./config');
-const { redisConfig } = require('./config/queue');
 const socket = require('./socket');
 const seedAdmin = require('./seedAdmin');
 const { seasonQueue } = require('./config/queue');
@@ -99,7 +98,7 @@ app.use(xss());
 
 // 5. Rate Limiting (Redis Backed)
 const redisClient = require('redis').createClient({
-    url: redisConfig.url
+    url: process.env.REDIS_URL
 });
 // Handle redis errors silently to prevent API container crashes dropping live queries
 redisClient.on('error', (err) => logger.warn('[REDIS LIMITER ERROR] Non-fatal fault: ' + err.message));

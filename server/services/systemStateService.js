@@ -1,5 +1,5 @@
 const { Worker } = require('bullmq');
-const { rankingQueue, integrityQueue, aiMetricsQueue, tournamentQueue, seasonQueue, systemQueue, redisConfig } = require('../config/queue');
+const { rankingQueue, integrityQueue, aiMetricsQueue, tournamentQueue, seasonQueue, systemQueue, redisConnection } = require('../config/queue');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const SystemStateLog = require('../models/SystemStateLog');
@@ -178,7 +178,7 @@ const systemStateWorker = new Worker('system-state', async (job) => {
         const { runDeepReconciliation } = require('./economicReconciliationService');
         await runDeepReconciliation();
     }
-}, { connection: redisConfig });
+}, { connection: redisConnection });
 
 // Initialize repeatable job pattern safely
 (async () => {

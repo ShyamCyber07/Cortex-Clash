@@ -1,5 +1,5 @@
 const { Worker } = require('bullmq');
-const { redisConfig } = require('../config/queue');
+const { redisConnection } = require('../config/queue');
 const connectDB = require('../config/db');
 require('dotenv').config();
 
@@ -66,7 +66,7 @@ const rankingWorker = new Worker('ranking-updates', async job => {
     } catch (err) {
         throw err; // Trigger retry backoff
     }
-}, { connection: redisConfig });
+}, { connection: redisConnection });
 bindWorkerEvents(rankingWorker, 'Rankings');
 
 // 2. Integrity Analysis Worker
@@ -77,7 +77,7 @@ const integrityWorker = new Worker('integrity-analysis', async job => {
     } catch (err) {
         throw err;
     }
-}, { connection: redisConfig });
+}, { connection: redisConnection });
 bindWorkerEvents(integrityWorker, 'Integrity');
 
 // 3. AI Metrics Worker
@@ -91,7 +91,7 @@ const aiMetricsWorker = new Worker('ai-metrics', async job => {
     } catch (err) {
         throw err;
     }
-}, { connection: redisConfig });
+}, { connection: redisConnection });
 bindWorkerEvents(aiMetricsWorker, 'AI Tracking');
 
 // 4. Season Rollover Worker (Singleton Repeatable Job)
@@ -102,7 +102,7 @@ const seasonWorker = new Worker('season-rollover', async job => {
     } catch (err) {
         throw err;
     }
-}, { connection: redisConfig });
+}, { connection: redisConnection });
 bindWorkerEvents(seasonWorker, 'Season');
 
 // 5. Tournament Automator Worker
@@ -113,7 +113,7 @@ const tournamentWorker = new Worker('tournament-advancement', async job => {
     } catch (err) {
         throw err;
     }
-}, { connection: redisConfig });
+}, { connection: redisConnection });
 bindWorkerEvents(tournamentWorker, 'Tournament');
 
 

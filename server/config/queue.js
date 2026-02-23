@@ -1,21 +1,27 @@
 const { Queue } = require('bullmq');
+const IORedis = require('ioredis');
 
-// Redis Connection configuration
-const redisConfig = {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+// 1. & 3. Throw a fatal error if REDIS_URL is missing
+if (!process.env.REDIS_URL) {
+    console.error('FATAL: REDIS_URL missing');
+    process.exit(1);
+}
+
+// 2. Ensure Redis initializes ONLY using REDIS_URL exactly
+const redisConnection = new IORedis(process.env.REDIS_URL, {
     maxRetriesPerRequest: null, // Required by BullMQ
-};
+});
 
 // Create queues
-const rankingQueue = new Queue('ranking-updates', { connection: redisConfig, defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 1000 } } });
-const integrityQueue = new Queue('integrity-analysis', { connection: redisConfig, defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 1000 } } });
-const aiMetricsQueue = new Queue('ai-metrics', { connection: redisConfig, defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 1000 } } });
-const seasonQueue = new Queue('season-rollover', { connection: redisConfig });
-const tournamentQueue = new Queue('tournament-advancement', { connection: redisConfig, defaultJobOptions: { attempts: 5, backoff: { type: 'exponential', delay: 2000 } } });
-const systemQueue = new Queue('system-state', { connection: redisConfig });
+const rankingQueue = new Queue('ranking-updates', { connection: redisConnection, defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 1000 } } });
+const integrityQueue = new Queue('integrity-analysis', { connection: redisConnection, defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 1000 } } });
+const aiMetricsQueue = new Queue('ai-metrics', { connection: redisConnection, defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 1000 } } });
+const seasonQueue = new Queue('season-rollover', { connection: redisConnection });
+const tournamentQueue = new Queue('tournament-advancement', { connection: redisConnection, defaultJobOptions: { attempts: 5, backoff: { type: 'exponential', delay: 2000 } } });
+const systemQueue = new Queue('system-state', { connection: redisConnection });
 
 module.exports = {
-    redisConfig,
+    redisConnection, // 4. Shared specific connection mapped centrally
     rankingQueue,
     integrityQueue,
     aiMetricsQueue,
