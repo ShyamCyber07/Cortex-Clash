@@ -12,6 +12,7 @@ const hpp = require('hpp');
 const xss = require('xss-clean');
 const { RedisStore } = require('rate-limit-redis');
 const { logger, requestLogger } = require('./utils/logger');
+const mongoose = require('mongoose');
 
 // Local imports
 const connectDB = require('./config/db');
