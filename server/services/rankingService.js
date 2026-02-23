@@ -1,5 +1,11 @@
 const User = require('../models/User');
 const Match = require('../models/Match');
+const Match = require('../models/Match');
+const Season = require('../models/Season');
+const RankingLedger = require('../models/RankingLedger');
+const { injectChaos } = require('../utils/chaos');
+const config = require('../config');
+const { rankingQueue } = require('../config/queue');
 
 const BASE_K_FACTOR = 32;
 
@@ -14,7 +20,7 @@ const getGameStats = (user, gameId) => {
     return stats;
 };
 
-const updateRankings = async (matchId) => {
+const _runRankingsUpdate = async (matchId) => {
     // Deep populate to get game rules
     const match = await Match.findById(matchId)
         .populate('participants')
@@ -51,12 +57,32 @@ const updateRankings = async (matchId) => {
     }
 };
 
+const updateRankings = async (matchId) => {
+    // Push the ranking generation to Redis queue instead of doing it synchronously
+    await rankingQueue.add('rank-update', { matchId });
+    console.log(`[BULLMQ] Dispatched match ${matchId} to rankingQueue`);
+};
+
 // Handle 1v1 or Team vs Team
 const processDuelRanking = async (match, game, participants, seasonId) => {
     const winner = participants.find(p => p._id.equals(match.winner._id));
     const loser = participants.find(p => !p._id.equals(match.winner._id));
 
     if (!winner || !loser) return;
+
+    // Idempotency Gate (Guarantees exactly 1 update)
+    try {
+        await RankingLedger.create([
+            { user: winner._id, match: match._id },
+            { user: loser._id, match: match._id }
+        ]);
+    } catch (err) {
+        if (err.code === 11000) {
+            console.warn(`[RANKING] Idempotency block hit: Match ${match._id} ratings already processed.`);
+            return;
+        }
+        throw err;
+    }
 
     // Get current ratings (Global for now to seed, or Game Specific)
     // We update BOTH global and game-specific
@@ -66,6 +92,8 @@ const processDuelRanking = async (match, game, participants, seasonId) => {
 
     const Ra = wGameStats.rankPoints;
     const Rb = lGameStats.rankPoints;
+
+    await injectChaos('Ranking: Elo Duel', match._id.toString());
 
     // Calculate Margin Multiplier
     let kMultiplier = 1;
@@ -92,7 +120,7 @@ const processDuelRanking = async (match, game, participants, seasonId) => {
         const p1WinRate = wGameStats.wins / (wGameStats.matchesPlayed || 1);
         const p2WinRate = lGameStats.wins / (lGameStats.matchesPlayed || 1);
 
-        const response = await axios.post('http://localhost:8000/predict', {
+        const response = await axios.post(config.mlServiceUrl, {
             p1_rating: Ra,
             p2_rating: Rb,
             p1_win_rate: p1WinRate,
@@ -146,6 +174,18 @@ const processMultiplayerRanking = async (match, game, participants, seasonId) =>
     const totalPlayers = participants.length;
 
     for (const participant of participants) {
+        // Idempotency Check per player
+        try {
+            await RankingLedger.create({ user: participant._id, match: match._id });
+        } catch (err) {
+            if (err.code === 11000) {
+                continue; // This user was already ranked from a duplicate job.
+            }
+            throw err;
+        }
+
+        await injectChaos('Ranking: BR Placement', match._id.toString());
+
         const pStats = getGameStats(participant, gameId);
         const currentRating = pStats.rankPoints;
 
@@ -231,4 +271,4 @@ const updateUserStats = (user, gameId, newRank, isWin, delta, seasonId) => {
     user.markModified('gameStats');
 };
 
-module.exports = { updateRankings };
+module.exports = { updateRankings, _runRankingsUpdate, getGameStats };

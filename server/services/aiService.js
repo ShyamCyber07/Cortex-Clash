@@ -1,7 +1,10 @@
 const axios = require('axios');
 const AuditLog = require('../models/AuditLog');
+const AIPerformance = require('../models/AIPerformance');
 
-const ML_SERVICE_URL = 'http://127.0.0.1:8000/predict';
+const config = require('../config');
+
+const ML_SERVICE_URL = config.mlServiceUrl;
 
 /**
  * Get win probability prediction from ML service
@@ -40,6 +43,60 @@ const getPrediction = async (p1Data, p2Data, gameData = {}) => {
     }
 };
 
+/**
+ * Record accuracy and Brier score after a match completes
+ * @param {Object} match - The populated Match document
+ */
+const recordMatchPredictionResult = async (match) => {
+    try {
+        if (!match.prediction || !match.winner || match.participants.length < 2) return;
+
+        const p1Id = String(match.participants[0]._id || match.participants[0]);
+        const p2Id = String(match.participants[1]._id || match.participants[1]);
+        const winnerId = String(match.winner._id || match.winner);
+
+        const actualWinner = winnerId === p1Id ? 'p1' : (winnerId === p2Id ? 'p2' : null);
+        if (!actualWinner) return;
+
+        // Ensure prediction structure exists
+        const { win_probability, predicted_winner, confidence_score } = match.prediction;
+        if (win_probability === undefined || !predicted_winner) return;
+
+        const isCorrect = (predicted_winner === actualWinner);
+
+        // Calculate Brier score: (predicted_p1_prob - actual_p1_outcome)^2
+        // If predicted_winner from model is p1, win_probability refers to p1.
+        // Wait, what if prediction's `predicted_winner` was p2 and win_probability refers to p2?
+        // Let's assume prediction returns `win_probability` for p1 always, or for predicted winner.
+        // Looking at the ML schema, win_probability is likely for the predicted winner. 
+        // Let's normalize `p1_win_prob`.
+        const p1_win_prob = predicted_winner === 'p1' ? win_probability : (1 - win_probability);
+        const actual_p1_outcome = actualWinner === 'p1' ? 1 : 0;
+
+        const brierScore = Math.pow(p1_win_prob - actual_p1_outcome, 2);
+
+        // Confidence diff -> how confident vs outcome truth
+        const confidenceDifference = isCorrect ? win_probability : -win_probability;
+
+        await AIPerformance.create({
+            match: match._id,
+            predictedWinner,
+            winProbability: p1_win_prob,
+            actualWinner,
+            isCorrect,
+            brierScore,
+            confidenceDifference
+        });
+
+        console.log(`[AI SERVICE] Tracked prediction for match ${match._id}: Brier=${brierScore.toFixed(3)}, Correct=${isCorrect}`);
+
+    } catch (err) {
+        if (err.code === 11000) return; // Ignore duplicate
+        console.error(`[AI SERVICE] Failed to record prediction result:`, err);
+    }
+};
+
 module.exports = {
-    getPrediction
+    getPrediction,
+    recordMatchPredictionResult
 };

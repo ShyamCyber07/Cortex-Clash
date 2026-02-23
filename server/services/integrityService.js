@@ -2,6 +2,8 @@ const User = require('../models/User');
 const Match = require('../models/Match');
 const IntegrityLog = require('../models/IntegrityLog');
 const { getPrediction } = require('./aiService');
+const { getGameStats } = require('./rankingService');
+const { invalidateIntegrityCache } = require('../utils/cache');
 
 const SUSPICION_THRESHOLD = 50;
 
@@ -35,11 +37,8 @@ const analyzeMatchIntegrity = async (matchId) => {
         const game = match.tournament?.game;
         const gameId = game?._id.toString();
 
-        // Helper to get stats (duplicated from matchRoutes for now to avoid dependency loop or complexity)
-        const getStats = (user, gId) => user.gameStats?.get(gId) || { rankPoints: 1000, wins: 0, matchesPlayed: 0 };
-
-        const wStats = getStats(winner, gameId);
-        const lStats = getStats(loser, gameId);
+        const wStats = getGameStats(winner, gameId);
+        const lStats = getGameStats(loser, gameId);
 
         const prediction = await getPrediction(
             { rating: wStats.rankPoints, winRate: (wStats.wins / (wStats.matchesPlayed || 1)), id: winner._id },
@@ -48,6 +47,29 @@ const analyzeMatchIntegrity = async (matchId) => {
         );
 
         if (!prediction) return;
+
+        // Apply Time-Weighted Suspicion Decay
+        const applyDecay = (user) => {
+            const now = new Date();
+            const lastIncrease = user.integrity.lastSuspicionIncreaseAt || user.createdAt || now;
+            const lastDecay = user.integrity.lastSuspicionDecayAt || lastIncrease;
+
+            // Only decay if it's been at least 7 days since last suspicion INCREASE
+            const daysSinceIncrease = (now - lastIncrease) / (1000 * 60 * 60 * 24);
+            if (daysSinceIncrease >= 7) {
+                const daysSinceDecay = (now - lastDecay) / (1000 * 60 * 60 * 24);
+                const periods = Math.floor(daysSinceDecay / 7);
+                if (periods > 0) {
+                    let score = user.integrity.suspicionScore || 0;
+                    for (let i = 0; i < periods; i++) score *= 0.95;
+                    user.integrity.suspicionScore = Math.max(0, parseFloat(score.toFixed(2)));
+                    user.integrity.lastSuspicionDecayAt = new Date(lastDecay.getTime() + (periods * 7 * 24 * 60 * 60 * 1000));
+                }
+            }
+        };
+
+        applyDecay(winner);
+        applyDecay(loser);
 
         // --- 2. Anomaly Detection Logic ---
 
@@ -68,11 +90,11 @@ const analyzeMatchIntegrity = async (matchId) => {
         const winnerProb = prediction.win_probability;
 
         if (winnerProb < 0.2) {
-            suspicionDelta += 15;
+            suspicionDelta += 20; // Extreme Upset
             reasons.push(`Extreme Upset (Win Chance: ${(winnerProb * 100).toFixed(1)}%)`);
         } else if (winnerProb < 0.35) {
-            suspicionDelta += 5;
-            reasons.push(`Upset (Win Chance: ${(winnerProb * 100).toFixed(1)}%)`);
+            suspicionDelta += 10; // Moderate Upset
+            reasons.push(`Moderate Upset (Win Chance: ${(winnerProb * 100).toFixed(1)}%)`);
         }
 
         // B. Win Streak Anomaly
@@ -90,7 +112,7 @@ const analyzeMatchIntegrity = async (matchId) => {
         loser.integrity.winStreak = 0;
 
         if (winner.integrity.winStreak > 10) {
-            suspicionDelta += 10;
+            suspicionDelta += 15; // Win Streak Anomaly
             reasons.push(`Unnatural Win Streak (${winner.integrity.winStreak})`);
         } else if (winner.integrity.winStreak > 5 && winnerProb < 0.4) {
             // Streak of upsets
@@ -110,6 +132,7 @@ const analyzeMatchIntegrity = async (matchId) => {
 
         if (suspicionDelta > 0) {
             winner.integrity.suspicionScore = (winner.integrity.suspicionScore || 0) + suspicionDelta;
+            winner.integrity.lastSuspicionIncreaseAt = new Date();
 
             // Check Threshold
             if (winner.integrity.suspicionScore > SUSPICION_THRESHOLD && !winner.integrity.isFlagged) {
@@ -132,16 +155,27 @@ const analyzeMatchIntegrity = async (matchId) => {
             });
 
             await winner.save();
-            await loser.save(); // Save streak reset
+            await loser.save(); // Save streak/decay
+
+            // Auto cache invalidation
+            invalidateIntegrityCache();
 
             console.log(`[INTEGRITY] Flagged analysis for ${winner.username}: +${suspicionDelta} (Total: ${winner.integrity.suspicionScore})`);
         } else {
-            // Decay suspicion slightly on "normal" wins?
-            // "Repeated wins in LOW probability" -> implies high probability wins are fine.
-            // Maybe decay suspicion on "Expected Wins"?
+            // Decay suspicion slightly on "normal" expected wins
             if (winnerProb > 0.7) {
-                winner.integrity.suspicionScore = Math.max(0, (winner.integrity.suspicionScore || 0) - 2);
+                winner.integrity.suspicionScore = Math.max(0, parseFloat(((winner.integrity.suspicionScore || 0) - 2).toFixed(2)));
+                // Also unflag if dropping below threshold
+                if (winner.integrity.suspicionScore < SUSPICION_THRESHOLD && winner.integrity.isFlagged) {
+                    winner.integrity.isFlagged = false;
+                }
                 await winner.save();
+                await loser.save(); // Save decay
+
+                invalidateIntegrityCache();
+            } else {
+                await winner.save(); // Save decay/streak either way
+                await loser.save();
             }
         }
 

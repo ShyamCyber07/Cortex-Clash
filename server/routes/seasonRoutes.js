@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Season = require('../models/Season');
+const User = require('../models/User');
 const { protect, admin } = require('../middleware/authMiddleware');
+const { invalidateIntegrityCache } = require('../utils/cache');
+const { applySeasonRollover } = require('../services/seasonAutomator');
 
 // @desc    Get All Seasons
 // @route   GET /api/v1/seasons
@@ -42,6 +45,11 @@ router.post('/', protect, admin, async (req, res) => {
             games,
             rules
         });
+
+        if (isActive) {
+            await applySeasonRollover();
+        }
+
         res.status(201).json(season);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -69,6 +77,8 @@ router.post('/seed', protect, admin, async (req, res) => {
             rules: 'Standard competitive rules apply.'
         });
 
+        await applySeasonRollover();
+
         res.status(201).json({ message: 'Season 1 created' });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -83,8 +93,15 @@ router.put('/:id', protect, admin, async (req, res) => {
         const season = await Season.findById(req.params.id);
         if (!season) return res.status(404).json({ message: 'Season not found' });
 
+        const wasActive = season.isActive;
         Object.assign(season, req.body);
         await season.save();
+
+        // If changed to active, treat as season rollover
+        if (req.body.isActive && !wasActive) {
+            await applySeasonRollover();
+        }
+
         res.json(season);
     } catch (err) {
         res.status(400).json({ message: err.message });

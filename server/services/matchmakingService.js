@@ -1,6 +1,7 @@
 const Tournament = require('../models/Tournament');
 const Match = require('../models/Match');
 const User = require('../models/User');
+const config = require('../config');
 
 const generateMatches = async (tournamentId) => {
     const tournament = await Tournament.findById(tournamentId).populate('participants');
@@ -44,7 +45,7 @@ const generateMatches = async (tournamentId) => {
                 const candWinRate = candidate.stats.wins / (candidate.stats.matchesPlayed || 1);
 
                 try {
-                    const response = await axios.post('http://localhost:8000/predict', {
+                    const response = await axios.post(config.mlServiceUrl, {
                         p1_rating: player1.stats.rankPoints,
                         p2_rating: candidate.stats.rankPoints,
                         p1_win_rate: p1WinRate,

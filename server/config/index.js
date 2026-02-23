@@ -8,6 +8,7 @@ const config = {
     port: process.env.PORT || 5000,
     mongoUri: process.env.MONGO_URI,
     jwtSecret: process.env.JWT_SECRET,
+    mlServiceUrl: process.env.ML_SERVICE_URL,
     clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
     apiVersion: 'v1'
 };
@@ -19,8 +20,13 @@ if (!config.mongoUri) {
 }
 
 if (!config.jwtSecret) {
-    console.warn('WARNING: JWT_SECRET is not defined. Using default (unsafe for production).');
-    config.jwtSecret = 'default_secret_unsafe';
+    console.error('FATAL: JWT_SECRET is not defined.');
+    process.exit(1);
+}
+
+if (!config.mlServiceUrl) {
+    console.error('FATAL: ML_SERVICE_URL is not defined.');
+    process.exit(1);
 }
 
 module.exports = config;

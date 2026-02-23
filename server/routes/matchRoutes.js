@@ -3,10 +3,10 @@ const router = express.Router();
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
 const { protect, organizer } = require('../middleware/authMiddleware');
-const { updateRankings } = require('../services/rankingService');
-const { getPrediction } = require('../services/aiService');
-const { analyzeMatchIntegrity } = require('../services/integrityService');
+const { updateRankings, getGameStats } = require('../services/rankingService');
+const { getPrediction, recordMatchPredictionResult } = require('../services/aiService');
 const AuditLog = require('../models/AuditLog');
+const { integrityQueue, aiMetricsQueue, tournamentQueue } = require('../config/queue');
 
 // @desc    Get match by ID
 // @route   GET /api/matches/:id
@@ -57,28 +57,15 @@ router.get('/:id/prediction', async (req, res) => {
 
         const gameId = game._id.toString();
 
-        // Helper to safely get specific game stats or fallback
-        // Since getGameStats is not exported from rankingService (wait, need to check if it is or duplicate logic)
-        // Actually, checking rankingService.js again, getGameStats is NOT exported currently.
-        // It says "module.exports = { updateRankings };"
-        // So I must implement the stats extraction logic here or modify rankingService to export it.
-        // The prompt says "Do NOT modify rankingService".
-        // So I will duplicate the stats extraction logic.
+        if (match.prediction) {
+            return res.json(match.prediction);
+        }
 
-        const getStats = (user, gId) => {
-            return user.gameStats?.get(gId) || {
-                rankPoints: 1000,
-                wins: 0,
-                losses: 0,
-                matchesPlayed: 0
-            };
-        };
+        const p1Stats = getGameStats(p1, gameId);
+        const p2Stats = getGameStats(p2, gameId);
 
-        const p1Stats = getStats(p1, gameId);
-        const p2Stats = getStats(p2, gameId);
-
-        const p1WinRate = p1Stats.matchesPlayed > 0 ? (p1Stats.wins / p1Stats.matchesPlayed) : 0.5; // Default if no games
-        const p2WinRate = p2Stats.matchesPlayed > 0 ? (p2Stats.wins / p2Stats.matchesPlayed) : 0.5;
+        const p1WinRate = (p1Stats.wins / (p1Stats.matchesPlayed || 1));
+        const p2WinRate = (p2Stats.wins / (p2Stats.matchesPlayed || 1));
 
         // Call AI Service
         const prediction = await getPrediction(
@@ -92,26 +79,29 @@ router.get('/:id/prediction', async (req, res) => {
             return res.status(200).json(null);
         }
 
+        const predictionData = {
+            ...prediction,
+            playerA: { id: p1._id, winRate: p1WinRate, rating: p1Stats.rankPoints },
+            playerB: { id: p2._id, winRate: p2WinRate, rating: p2Stats.rankPoints }
+        };
+
+        // Cache the prediction
+        match.prediction = predictionData;
+        await match.save();
+
         // Log Prediction for Analytics
-        // Using AuditLog is requested.
-        // We might not have req.user if public, but usually AuditLog needs a user.
-        // If req.user exists, use it. Else system.
         if (req.user) {
             await AuditLog.create({
                 user: req.user._id,
                 action: 'MATCH_PREDICTION',
                 resourceType: 'Match',
                 resourceId: match._id,
-                details: { prediction },
+                details: { prediction: predictionData },
                 ip: req.ip
             });
         }
 
-        res.json({
-            ...prediction,
-            playerA: { id: p1._id, winRate: p1WinRate, rating: p1Stats.rankPoints },
-            playerB: { id: p2._id, winRate: p2WinRate, rating: p2Stats.rankPoints }
-        });
+        res.json(predictionData);
 
     } catch (err) {
         console.error(`[PREDICTION ERROR] ${err.message}`);
@@ -179,8 +169,10 @@ router.post('/:id/result', protect, async (req, res) => {
             match.status = 'completed';
             match.endTime = new Date();
             await updateRankings(match._id);
-            // Run Integrity Analysis (Async - don't block response)
-            analyzeMatchIntegrity(match._id);
+            // Run Integrity & Analytics & Automation (Dispatched to BullMQ)
+            await integrityQueue.add('analyze-match', { matchId: match._id });
+            await aiMetricsQueue.add('record-prediction', { matchId: match._id });
+            await tournamentQueue.add('advance-bracket', { matchId: match._id });
             console.log(`[MATCH] Organizer verified match ${match._id}`);
         } else {
             match.verificationStatus = 'pending';
@@ -250,8 +242,10 @@ router.post('/:id/confirm', protect, async (req, res) => {
 
         await match.save();
         await updateRankings(match._id);
-        // Run Integrity Analysis (Async - don't block response)
-        analyzeMatchIntegrity(match._id);
+        // Run Integrity & Analytics & Automation (Dispatched to BullMQ)
+        await integrityQueue.add('analyze-match', { matchId: match._id });
+        await aiMetricsQueue.add('record-prediction', { matchId: match._id });
+        await tournamentQueue.add('advance-bracket', { matchId: match._id });
         console.log(`[MATCH] Match ${match._id} verified and completed`);
 
         // Create Audit Log

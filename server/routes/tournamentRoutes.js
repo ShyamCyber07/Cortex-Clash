@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Tournament = require('../models/Tournament');
 const { protect, organizer } = require('../middleware/authMiddleware');
+const { deductTournamentEntryFee } = require('../services/escrowService');
+const { blockNewTournaments, blockEntryFeeRegistration } = require('../middleware/protectionMiddleware');
 
 // @desc    Get all tournaments
 // @route   GET /api/tournaments
@@ -20,7 +22,7 @@ router.get('/', async (req, res) => {
 // @desc    Create a tournament
 // @route   POST /api/tournaments
 // @access  Organizer/Admin
-router.post('/', protect, organizer, async (req, res) => {
+router.post('/', protect, organizer, blockNewTournaments, async (req, res) => {
     const { name, description, game, matchFormat, format, startDate, endDate, rules } = req.body;
 
     const tournament = new Tournament({
@@ -32,7 +34,9 @@ router.post('/', protect, organizer, async (req, res) => {
         format,
         startDate,
         endDate,
-        rules
+        rules,
+        entryFee: req.body.entryFee || 0,
+        basePrizePool: req.body.basePrizePool || 0
     });
 
     try {
@@ -70,7 +74,7 @@ router.get('/:id', async (req, res) => {
 // @desc    Register for a tournament
 // @route   POST /api/tournaments/:id/register
 // @access  Private (Player)
-router.post('/:id/register', protect, async (req, res) => {
+router.post('/:id/register', protect, blockEntryFeeRegistration, async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id);
 
@@ -88,6 +92,13 @@ router.post('/:id/register', protect, async (req, res) => {
 
         if (tournament.participants.length >= tournament.maxParticipants) {
             return res.status(400).json({ message: 'Tournament is full' });
+        }
+
+        // Deduct entry fee via escrow service
+        try {
+            await deductTournamentEntryFee(req.user._id, tournament._id);
+        } catch (feeError) {
+            return res.status(402).json({ message: feeError.message });
         }
 
         tournament.participants.push(req.user._id);

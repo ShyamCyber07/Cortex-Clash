@@ -9,4 +9,7 @@ const integrityLogSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+integrityLogSchema.index({ user: 1 });
+integrityLogSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('IntegrityLog', integrityLogSchema);

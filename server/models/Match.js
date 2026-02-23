@@ -11,6 +11,7 @@ const matchSchema = new mongoose.Schema({
     verificationStatus: { type: String, enum: ['pending', 'verified', 'disputed'], default: 'pending' },
     status: { type: String, enum: ['scheduled', 'ongoing', 'completed', 'disputed'], default: 'scheduled' }, // 'disputed' is good for organizers
     replayLink: { type: String },
+    prediction: { type: mongoose.Schema.Types.Mixed }, // Cached AI Prediction
     startTime: { type: Date },
     endTime: { type: Date },
 }, { timestamps: true });

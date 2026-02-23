@@ -1,4 +1,4 @@
-import { Plus, Trophy, Users, Settings, Calendar, Shield, AlertTriangle } from 'lucide-react';
+import { Plus, Trophy, Users, Settings, Calendar, Shield, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -50,6 +50,13 @@ const AdminDashboard = () => {
             icon: AlertTriangle,
             link: '/admin/integrity',
             color: 'bg-red-500'
+        },
+        {
+            title: 'Risk Console',
+            description: 'Operational risk and degradation telemetry.',
+            icon: Shield,
+            link: '/admin/risk',
+            color: 'bg-amber-500'
         }
     ];
 
@@ -120,9 +127,14 @@ const AdminDashboard = () => {
             {/* Integrity Alert Section */}
             {flaggedUsers.length > 0 && (
                 <div className="mt-12">
-                    <h2 className="text-xl font-bold text-red-400 mb-6 flex items-center gap-2">
-                        <AlertTriangle className="h-6 w-6" /> Flagged Accounts for Review
-                    </h2>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-xl font-bold text-red-400 flex items-center gap-2">
+                            <AlertTriangle className="h-6 w-6" /> Flagged Accounts
+                        </h2>
+                        <Link to="/admin/integrity" className="text-indigo-400 hover:text-indigo-300 text-sm font-bold flex items-center gap-1 group">
+                            Full Integrity Dashboard <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                    </div>
                     <div className="bg-slate-900 border border-red-500/20 rounded-xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
@@ -136,7 +148,7 @@ const AdminDashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
-                                    {flaggedUsers.map(user => (
+                                    {flaggedUsers.slice(0, 5).map(user => (
                                         <tr key={user._id} className="hover:bg-slate-800/50">
                                             <td className="px-6 py-4 font-bold text-white">{user.username}</td>
                                             <td className="px-6 py-4">
@@ -147,14 +159,12 @@ const AdminDashboard = () => {
                                             </td>
                                             <td className="px-6 py-4 text-gray-300">{user.integrity?.winStreak || 0}</td>
                                             <td className="px-6 py-4">
-                                                {user.integrity?.isFlagged ? (
-                                                    <span className="text-red-400 text-sm font-bold animate-pulse">FLAGGED</span>
-                                                ) : (
-                                                    <span className="text-gray-500 text-sm">Monitoring</span>
-                                                )}
+                                                <span className="text-red-400 text-sm font-bold">{user.integrity?.status === 'under_review' ? 'UNDER REVIEW' : 'FLAGGED'}</span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <button className="text-indigo-400 hover:text-indigo-300 text-sm font-bold">Review</button>
+                                            <td className="px-6 py-4 text-right">
+                                                <Link to="/admin/integrity" className="p-2 hover:bg-slate-800 rounded-lg inline-block">
+                                                    <ArrowRight className="h-5 w-5 text-indigo-400" />
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))}

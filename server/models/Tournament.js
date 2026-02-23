@@ -10,6 +10,8 @@ const tournamentSchema = new mongoose.Schema({
     format: { type: String, enum: ['single-elimination', 'round-robin', 'double-elimination'], default: 'single-elimination' },
     status: { type: String, enum: ['upcoming', 'ongoing', 'completed'], default: 'upcoming' },
     maxParticipants: { type: Number, default: 64 },
+    entryFee: { type: Number, default: 0 },
+    basePrizePool: { type: Number, default: 0 },
     participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     matches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Match' }],
     season: { type: mongoose.Schema.Types.ObjectId, ref: 'Season' }, // The season this tournament belongs to

@@ -13,6 +13,9 @@ import AdminDashboard from './pages/Admin/AdminDashboard';
 import UserManagement from './pages/Admin/UserManagement';
 import GameSettings from './pages/Admin/GameSettings';
 import SeasonManagement from './pages/Admin/SeasonManagement';
+import IntegrityDashboard from './pages/Admin/IntegrityDashboard';
+import AIHealthDashboard from './pages/Admin/AIHealthDashboard';
+import RiskConsole from './pages/Admin/RiskConsole';
 import Debug from './pages/Debug';
 import ProtectedRoute from './components/ProtectedRoute';
 import { SocketProvider } from './context/SocketContext';
@@ -37,6 +40,9 @@ function App() {
                   <Route path="/admin/users" element={<UserManagement />} />
                   <Route path="/admin/games" element={<GameSettings />} />
                   <Route path="/admin/seasons" element={<SeasonManagement />} />
+                  <Route path="/admin/integrity" element={<IntegrityDashboard />} />
+                  <Route path="/admin/ai" element={<AIHealthDashboard />} />
+                  <Route path="/admin/risk" element={<RiskConsole />} />
                 </Route>
 
                 <Route path="/rankings" element={<Rankings />} />

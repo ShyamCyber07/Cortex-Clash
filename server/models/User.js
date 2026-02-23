@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ['player', 'organizer', 'admin'], default: 'player' },
     avatar: { type: String, default: '' },
     bio: { type: String, default: '' },
+    walletBalance: { type: Number, default: 0 }, // New Monetization Currency (e.g., 'CRX' Coins)
     stats: {
         wins: { type: Number, default: 0 },
         losses: { type: Number, default: 0 },
@@ -24,14 +25,26 @@ const userSchema = new mongoose.Schema({
     // Season-specific stats: { [seasonId]: { [gameId]: { rankPoints, wins, ... } } }
     seasonStats: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
     matchHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Match' }],
+    // Rewards System
+    badges: [{
+        name: String,
+        description: String,
+        icon: String, // e.g., 'tournament_winner'
+        date: { type: Date, default: Date.now }
+    }],
     // Integrity System
     integrity: {
-        suspicionScore: { type: Number, default: 0 },
+        suspicionScore: { type: Number, default: 0, index: true },
         isFlagged: { type: Boolean, default: false },
+        status: { type: String, enum: ['none', 'flagged', 'under_review', 'cleared'], default: 'none' },
         lastFlaggedAt: { type: Date },
-        winStreak: { type: Number, default: 0 } // Helper for anomaly detection
+        winStreak: { type: Number, default: 0 },
+        lastSuspicionIncreaseAt: { type: Date, default: Date.now },
+        lastSuspicionDecayAt: { type: Date, default: Date.now }
     }
 }, { timestamps: true });
+
+userSchema.index({ 'integrity.suspicionScore': -1 });
 
 // Password hash middleware
 userSchema.pre('save', async function (next) {
