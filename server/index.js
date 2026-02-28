@@ -9,7 +9,6 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const mongoSanitize = require('mongo-sanitize');
 const hpp = require('hpp');
-const xss = require('xss-clean');
 const { RedisStore } = require('rate-limit-redis');
 const { logger, requestLogger } = require('./utils/logger');
 const mongoose = require('mongoose');
@@ -93,9 +92,6 @@ app.use((req, res, next) => {
 
 // Prevent parameter pollution
 app.use(hpp());
-
-// XSS Protection
-app.use(xss());
 
 // 5. Rate Limiting (Redis Backed)
 const redisClient = require('redis').createClient({
