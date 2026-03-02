@@ -45,14 +45,15 @@ const generateMatches = async (tournamentId) => {
                 const candWinRate = candidate.stats.wins / (candidate.stats.matchesPlayed || 1);
 
                 try {
-                    const response = await axios.post(config.mlServiceUrl, {
-                        p1_rating: player1.stats.rankPoints,
-                        p2_rating: candidate.stats.rankPoints,
-                        p1_win_rate: p1WinRate,
-                        p2_win_rate: candWinRate
-                    }, { timeout: 500 }); // Very fast timeout for matchmaking loop
+                    const { getMLPredictionRaw } = require('../utils/mlService');
+                    const pred = await getMLPredictionRaw(
+                        player1.stats.rankPoints || 1000,
+                        candidate.stats.rankPoints || 1000,
+                        p1WinRate,
+                        candWinRate
+                    );
 
-                    const prob = response.data.win_probability;
+                    const prob = pred.win_probability;
                     // If balance is decent (0.2 < prob < 0.8), accept immediately
                     if (prob > 0.2 && prob < 0.8) {
                         bestOpponent = candidate;
@@ -79,12 +80,31 @@ const generateMatches = async (tournamentId) => {
                 usedPlayers.add(player1._id.toString());
                 usedPlayers.add(bestOpponent._id.toString());
 
+                // Fetch final ML Prediction to attach to schema
+                const { getMLPredictionRaw } = require('../utils/mlService');
+                const finalP1WR = player1.stats.wins / (player1.stats.matchesPlayed || 1);
+                const finalP2WR = bestOpponent.stats.wins / (bestOpponent.stats.matchesPlayed || 1);
+
+                const mlPred = await getMLPredictionRaw(
+                    player1.stats.rankPoints || 1000,
+                    bestOpponent.stats.rankPoints || 1000,
+                    finalP1WR,
+                    finalP2WR
+                );
+
                 const match = new Match({
                     tournament: tournament._id,
                     round: 1,
                     participants: [player1._id, bestOpponent._id],
                     status: 'scheduled',
-                    startTime: new Date()
+                    startTime: new Date(),
+                    mlPrediction: {
+                        win_probability: mlPred.win_probability,
+                        confidence_score: mlPred.confidence_score,
+                        predicted_winner: mlPred.predicted_winner,
+                        risk_level: mlPred.risk_level,
+                        is_fallback: mlPred.is_fallback
+                    }
                 });
 
                 matches.push(match);
@@ -99,12 +119,35 @@ const generateMatches = async (tournamentId) => {
             if (i + 1 < sortedParticipants.length) {
                 const player1 = sortedParticipants[i];
                 const player2 = sortedParticipants[i + 1];
+
+                let mlPred = { win_probability: 0.5, confidence_score: 0.0, predicted_winner: 'p1', risk_level: 'LOW', is_fallback: true };
+                try {
+                    const { getMLPredictionRaw } = require('../utils/mlService');
+                    const finalP1WR = player1.stats.wins / (player1.stats.matchesPlayed || 1);
+                    const finalP2WR = player2.stats.wins / (player2.stats.matchesPlayed || 1);
+                    mlPred = await getMLPredictionRaw(
+                        player1.stats.rankPoints || 1000,
+                        player2.stats.rankPoints || 1000,
+                        finalP1WR,
+                        finalP2WR
+                    );
+                } catch (mlErr) {
+                    console.error("Matchmaking Loop - ML fail block:", mlErr);
+                }
+
                 const match = new Match({
                     tournament: tournament._id,
                     round: 1,
                     participants: [player1._id, player2._id],
                     status: 'scheduled',
-                    startTime: new Date()
+                    startTime: new Date(),
+                    mlPrediction: {
+                        win_probability: mlPred.win_probability,
+                        confidence_score: mlPred.confidence_score,
+                        predicted_winner: mlPred.predicted_winner,
+                        risk_level: mlPred.risk_level,
+                        is_fallback: mlPred.is_fallback
+                    }
                 });
                 matches.push(match);
                 matchPromises.push(match.save());

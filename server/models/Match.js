@@ -12,6 +12,13 @@ const matchSchema = new mongoose.Schema({
     status: { type: String, enum: ['scheduled', 'ongoing', 'completed', 'disputed'], default: 'scheduled' }, // 'disputed' is good for organizers
     replayLink: { type: String },
     prediction: { type: mongoose.Schema.Types.Mixed }, // Cached AI Prediction
+    mlPrediction: {
+        win_probability: { type: Number },
+        confidence_score: { type: Number },
+        predicted_winner: { type: String, enum: ['p1', 'p2'] }, // Indicates which participant index won
+        risk_level: { type: String, enum: ['LOW', 'MEDIUM', 'HIGH'] },
+        is_fallback: { type: Boolean, default: false }
+    },
     startTime: { type: Date },
     endTime: { type: Date },
 }, { timestamps: true });

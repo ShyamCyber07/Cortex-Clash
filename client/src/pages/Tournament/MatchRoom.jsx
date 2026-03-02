@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Trophy, Clock, Shield, AlertTriangle, Activity, TrendingUp } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext';
+import AIPredictionCard from '../../components/Tournament/AIPredictionCard';
 
 const MatchRoom = () => {
     const { id } = useParams();
@@ -227,58 +228,12 @@ const MatchRoom = () => {
                 </div>
 
                 {/* AI Prediction Card */}
-                {prediction && !isCompleted && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-10 bg-slate-900/50 backdrop-blur-sm rounded-xl border border-indigo-500/20 overflow-hidden"
-                    >
-                        <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                            <h3 className="text-indigo-300 font-bold flex items-center gap-2">
-                                <Activity className="w-4 h-4" />
-                                Cortex AI Prediction
-                            </h3>
-                            {prediction.confidence_score > 0.6 && (
-                                <div className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                                    <TrendingUp className="w-3 h-3" /> High Confidence
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="p-6 relative">
-                            <div className="flex justify-between items-end mb-2 text-sm font-medium">
-                                <div className="text-slate-300">
-                                    {match.participants[0]?.username} <span className="text-slate-500">({(prediction.win_probability * 100).toFixed(1)}%)</span>
-                                </div>
-                                <div className="text-slate-300">
-                                    <span className="text-slate-500">({((1 - prediction.win_probability) * 100).toFixed(1)}%)</span> {match.participants[1]?.username}
-                                </div>
-                            </div>
-
-                            {/* Probability Bar */}
-                            <div className="h-4 bg-slate-800 rounded-full overflow-hidden flex relative">
-                                {/* Separator Line for 50% */}
-                                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-900 z-10" />
-
-                                <motion.div
-                                    initial={{ width: '50%' }}
-                                    animate={{ width: `${prediction.win_probability * 100}%` }}
-                                    transition={{ duration: 1.5, ease: "easeOut" }}
-                                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
-                                />
-                                <motion.div
-                                    initial={{ width: '50%' }}
-                                    animate={{ width: `${(1 - prediction.win_probability) * 100}%` }}
-                                    transition={{ duration: 1.5, ease: "easeOut" }}
-                                    className="h-full bg-slate-700"
-                                />
-                            </div>
-
-                            <div className="mt-2 text-center text-xs text-slate-500">
-                                Win Probability based on {match.tournament?.game?.name || 'historical'} performance
-                            </div>
-                        </div>
-                    </motion.div>
+                {prediction && !isCompleted && match.participants?.length === 2 && (
+                    <AIPredictionCard
+                        prediction={prediction}
+                        player1Name={match.participants[0]?.username}
+                        player2Name={match.participants[1]?.username}
+                    />
                 )}
 
                 {/* Result Submission / Display */}

@@ -24,7 +24,21 @@ router.get('/:id', async (req, res) => {
 
         if (!match) return res.status(404).json({ message: 'Match not found' });
 
-        res.json(match);
+        let responseObj = match.toJSON();
+
+        // Flatten ML predictions onto root response object
+        if (responseObj.mlPrediction) {
+            responseObj = {
+                ...responseObj,
+                win_probability: responseObj.mlPrediction.win_probability,
+                confidence_score: responseObj.mlPrediction.confidence_score,
+                predicted_winner: responseObj.mlPrediction.predicted_winner,
+                risk_level: responseObj.mlPrediction.risk_level,
+                is_fallback: responseObj.mlPrediction.is_fallback
+            };
+        }
+
+        res.json(responseObj);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -57,8 +71,8 @@ router.get('/:id/prediction', async (req, res) => {
 
         const gameId = game._id.toString();
 
-        if (match.prediction) {
-            return res.json(match.prediction);
+        if (match.mlPrediction && match.mlPrediction.win_probability !== undefined) {
+            return res.json(match.mlPrediction);
         }
 
         const p1Stats = getGameStats(p1, gameId);
@@ -67,26 +81,31 @@ router.get('/:id/prediction', async (req, res) => {
         const p1WinRate = (p1Stats.wins / (p1Stats.matchesPlayed || 1));
         const p2WinRate = (p2Stats.wins / (p2Stats.matchesPlayed || 1));
 
-        // Call AI Service
-        const prediction = await getPrediction(
-            { rating: p1Stats.rankPoints, winRate: p1WinRate, id: p1._id },
-            { rating: p2Stats.rankPoints, winRate: p2WinRate, id: p2._id },
-            { type: game.name }
+        // Call our unified ML Service
+        const { getMLPredictionRaw } = require('../utils/mlService');
+        const prediction = await getMLPredictionRaw(
+            p1Stats.rankPoints || 1000,
+            p2Stats.rankPoints || 1000,
+            p1WinRate,
+            p2WinRate
         );
 
         if (!prediction) {
-            // Graceful fallback: return null or simple 50/50
-            return res.status(200).json(null);
+            return res.status(500).json({ message: 'Prediction unresolvable' });
         }
 
         const predictionData = {
-            ...prediction,
+            win_probability: prediction.win_probability,
+            confidence_score: prediction.confidence_score,
+            predicted_winner: prediction.predicted_winner,
+            risk_level: prediction.risk_level,
+            is_fallback: prediction.is_fallback,
             playerA: { id: p1._id, winRate: p1WinRate, rating: p1Stats.rankPoints },
             playerB: { id: p2._id, winRate: p2WinRate, rating: p2Stats.rankPoints }
         };
 
-        // Cache the prediction
-        match.prediction = predictionData;
+        // Cache the prediction on the Match Model
+        match.mlPrediction = predictionData;
         await match.save();
 
         // Log Prediction for Analytics

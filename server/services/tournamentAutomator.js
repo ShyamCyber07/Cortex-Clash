@@ -88,12 +88,28 @@ const advanceTournamentBracket = async (matchId) => {
 
                     // Keep the chain going checking automation recursively
                 } else {
+                    const { getPredictionForUsers } = require('../utils/mlService');
+                    let mlPred = { win_probability: 0.5, confidence_score: 0.0, predicted_winner: 'p1', risk_level: 'LOW', is_fallback: true };
+
+                    try {
+                        mlPred = await getPredictionForUsers(p1, p2);
+                    } catch (e) {
+                        console.error(`[TOURNAMENT ${tournament._id}] ML Prediction failed during auto-advancement:`, e.message);
+                    }
+
                     const nextRoundMatch = new Match({
                         tournament: tournament._id,
                         round: nextRound,
                         participants: [p1, p2],
                         status: 'scheduled',
-                        startTime: new Date()
+                        startTime: new Date(),
+                        mlPrediction: {
+                            win_probability: mlPred.win_probability,
+                            confidence_score: mlPred.confidence_score,
+                            predicted_winner: mlPred.predicted_winner,
+                            risk_level: mlPred.risk_level,
+                            is_fallback: mlPred.is_fallback
+                        }
                     });
                     newMatches.push(nextRoundMatch);
                     matchPromises.push(nextRoundMatch.save());
