@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -27,7 +27,7 @@ function App() {
     <ErrorBoundary>
       <SocketProvider>
         <AuthProvider>
-          <Router basename="/Cortex-Clash">
+          <Router>
             <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-indigo-500 selection:text-white">
               <Navbar />
               <Routes>
