@@ -39,7 +39,7 @@ const TournamentDetails = () => {
 
         setActionLoading(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/tournaments/${id}/join`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/tournaments/${id}/register`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
