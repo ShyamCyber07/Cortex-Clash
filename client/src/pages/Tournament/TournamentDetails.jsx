@@ -147,7 +147,7 @@ const TournamentDetails = () => {
                                 </div>
 
                                 {/* Actions */}
-                                {tournament.status === 'upcoming' ? (
+                                {tournament.status === 'open' ? (
                                     <>
                                         {isOrganizer ? (
                                             <button

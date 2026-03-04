@@ -8,7 +8,7 @@ const tournamentSchema = new mongoose.Schema({
     // gameType maps to the specific format selected for this tournament (e.g. '5v5')
     matchFormat: { type: String, required: true },
     format: { type: String, enum: ['single-elimination', 'round-robin', 'double-elimination'], default: 'single-elimination' },
-    status: { type: String, enum: ['upcoming', 'ongoing', 'completed'], default: 'upcoming' },
+    status: { type: String, enum: ['open', 'ongoing', 'completed'], default: 'open' },
     maxParticipants: { type: Number, default: 64 },
     entryFee: { type: Number, default: 0 },
     basePrizePool: { type: Number, default: 0 },

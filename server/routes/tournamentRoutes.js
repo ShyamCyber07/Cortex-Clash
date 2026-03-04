@@ -82,11 +82,11 @@ router.post('/:id/register', protect, blockEntryFeeRegistration, async (req, res
             return res.status(404).json({ message: 'Tournament not found' });
         }
 
-        if (tournament.status !== 'upcoming') {
+        if (tournament.status !== 'open') {
             return res.status(400).json({ message: 'Tournament functionality is locked or finished' });
         }
 
-        if (tournament.participants.includes(req.user._id)) {
+        if (tournament.participants.some(p => p.toString() === req.user._id.toString())) {
             return res.status(400).json({ message: 'User already registered' });
         }
 
