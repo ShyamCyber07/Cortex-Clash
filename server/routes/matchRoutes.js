@@ -131,96 +131,32 @@ router.get('/:id/prediction', async (req, res) => {
 // Import Validation Service
 const { validateMatchResult } = require('../services/matchValidationService');
 
-// @desc    Submit Match Result (Step 1)
+// @desc    Submit Match Result
 // @route   POST /api/matches/:id/result
 // @access  Private
 router.post('/:id/result', protect, async (req, res) => {
-    const { replayLink, ...submissionData } = req.body;
-    const io = require('../socket').getIO();
-    console.log(`[MATCH] Result submission attempt for ${req.params.id} by ${req.user.username}`);
-
     try {
-        // Deep populate to get game rules
-        const match = await Match.findById(req.params.id)
-            .populate({
-                path: 'tournament',
-                populate: { path: 'game' }
-            });
+        const { winnerTeamId } = req.body;
 
-        if (!match) return res.status(404).json({ message: 'Match not found' });
-
-        if (match.status === 'completed' || match.verificationStatus === 'verified') {
-            return res.status(400).json({ message: 'Match is already completed/verified' });
+        const match = await Match.findById(req.params.id);
+        if (!match) {
+            return res.status(404).json({ message: 'Match not found' });
         }
 
-        // Prevent overwriting if already pending (unless organizer override)
-        if (match.verificationStatus === 'pending' && match.submittedBy && String(match.submittedBy) !== String(req.user._id)) {
-            return res.status(409).json({ message: 'Result already submitted. Please confirm or dispute instead.' });
+        const teamAId = match.teamA ? match.teamA.toString() : null;
+        const teamBId = match.teamB ? match.teamB.toString() : null;
+
+        if (winnerTeamId !== teamAId && winnerTeamId !== teamBId) {
+            return res.status(400).json({ message: 'winnerTeamId must belong to either teamA or teamB of this match' });
         }
 
-        const isParticipant = match.participants.includes(req.user._id);
-        const isOrganizer = req.user.role === 'organizer' || req.user.role === 'admin';
-
-        if (!isParticipant && !isOrganizer) {
-            return res.status(401).json({ message: 'Not authorized' });
-        }
-
-        // Validate Result based on Game Type
-        const game = match.tournament?.game;
-        let validatedResult;
-
-        try {
-            // Organizer can override validation if needed, but safer to validate
-            // For now, always validate
-            validatedResult = validateMatchResult(game, match.participants.map(p => p.toString()), submissionData);
-        } catch (validationErr) {
-            return res.status(400).json({ message: `Invalid Result: ${validationErr.message}` });
-        }
-
-        match.winner = validatedResult.winner;
-        match.score = validatedResult.score;
-        match.result = validatedResult.result; // Store structured data
-        match.replayLink = replayLink;
-        match.submittedBy = req.user._id;
-
-        if (isOrganizer) {
-            match.verificationStatus = 'verified';
-            match.status = 'completed';
-            match.endTime = new Date();
-            await updateRankings(match._id);
-            // Run Integrity & Analytics & Automation (Dispatched to BullMQ)
-            await integrityQueue.add('analyze-match', { matchId: match._id });
-            await aiMetricsQueue.add('record-prediction', { matchId: match._id });
-            await tournamentQueue.add('advance-bracket', { matchId: match._id });
-            console.log(`[MATCH] Organizer verified match ${match._id}`);
-        } else {
-            match.verificationStatus = 'pending';
-            match.status = 'ongoing';
-            console.log(`[MATCH] Player submitted pending result for match ${match._id}`);
-        }
-
-        const AuditLog = require('../models/AuditLog');
-
-        // ... (existing update logic)
+        match.status = 'completed';
+        match.winner = winnerTeamId;
 
         await match.save();
 
-        // Create Audit Log
-        await AuditLog.create({
-            user: req.user._id,
-            action: isOrganizer ? 'MATCH_VERIFIED_OVERRIDE' : 'MATCH_SUBMISSION',
-            resourceType: 'Match',
-            resourceId: match._id,
-            details: { winnerId, score, replayLink },
-            ip: req.ip
-        });
-
-        io.to(`match_${match._id}`).emit('match_update', match);
-        io.emit('tournament_update', { tournamentId: match.tournament, matchId: match._id });
-
-        res.json(match);
+        res.status(200).json(match);
     } catch (err) {
-        console.error(`[MATCH] Error in result submission: ${err.message}`);
         res.status(500).json({ message: err.message });
     }
 });

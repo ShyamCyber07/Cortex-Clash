@@ -19,20 +19,20 @@ const MatchCard = ({ match, isLast }) => {
                     </div>
 
                     <div className="space-y-2">
-                        {/* Player 1 */}
+                        {/* Team A */}
                         <div className={`p-2 rounded flex justify-between items-center 
-                            ${match.winner === match.participants[0]?._id ? 'bg-indigo-600/20 text-indigo-200' : 'bg-slate-900'}`}>
+                            ${match.winner === (match.teamA?._id || match.teamA) ? 'bg-indigo-600/20 text-indigo-200' : 'bg-slate-900'}`}>
                             <span className="truncate text-sm font-medium">
-                                {match.participants[0]?.username || 'TBD'}
+                                {match.teamA?.name || 'TBD'}
                             </span>
                             {match.score && <span className="text-xs font-mono">{match.score.split('-')[0]}</span>}
                         </div>
 
-                        {/* Player 2 */}
+                        {/* Team B */}
                         <div className={`p-2 rounded flex justify-between items-center 
-                            ${match.winner === match.participants[1]?._id ? 'bg-indigo-600/20 text-indigo-200' : 'bg-slate-900'}`}>
+                            ${match.winner === (match.teamB?._id || match.teamB) ? 'bg-indigo-600/20 text-indigo-200' : 'bg-slate-900'}`}>
                             <span className="truncate text-sm font-medium">
-                                {match.participants[1]?.username || 'TBD'}
+                                {match.teamB?.name || 'TBD'}
                             </span>
                             {match.score && <span className="text-xs font-mono">{match.score.split('-')[1]}</span>}
                         </div>

@@ -32,6 +32,7 @@ const integrityRoutes = require('./routes/integrityRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const systemRoutes = require('./routes/systemRoutes');
+const teamRoutes = require('./routes/teamRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -144,6 +145,7 @@ app.use(`${apiPrefix}/analytics`, analyticsRoutes);
 app.use(`${apiPrefix}/integrity`, integrityRoutes);
 app.use(`${apiPrefix}/ai`, aiRoutes);
 app.use(`${apiPrefix}/system`, systemRoutes);
+app.use(`${apiPrefix}/teams`, teamRoutes);
 
 // Root route
 app.get('/', (req, res) => {

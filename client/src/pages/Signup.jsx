@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, LogIn } from 'lucide-react';
+import { User, Mail, Lock, LogIn, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Signup = () => {
     const [formData, setFormData] = useState({
         username: '',
         email: '',
-        password: ''
+        password: '',
+        inviteCode: ''
     });
     const [error, setError] = useState('');
     const navigate = useNavigate();
@@ -38,6 +39,28 @@ const Signup = () => {
             const data = await response.json();
 
             if (response.ok) {
+                // If invite code exists, try to join team before navigating
+                if (formData.inviteCode) {
+                    try {
+                        const joinRes = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/teams/join`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${data.token}`
+                            },
+                            body: JSON.stringify({ inviteCode: formData.inviteCode.trim() }),
+                        });
+
+                        if (!joinRes.ok) {
+                            const joinData = await joinRes.json();
+                            console.error('Failed to join team:', joinData.message);
+                            // We don't stop signup process, the user is registered
+                        }
+                    } catch (err) {
+                        console.error('Server error when joining team:', err);
+                    }
+                }
+
                 login(data, data.token);
                 navigate('/dashboard');
             } else {
@@ -115,6 +138,21 @@ const Signup = () => {
                                 value={formData.password}
                                 onChange={handleChange}
                                 required
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Team Invite Code (Optional)</label>
+                        <div className="relative">
+                            <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                            <input
+                                name="inviteCode"
+                                type="text"
+                                className="w-full bg-slate-900/50 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                placeholder="CC-XXXX"
+                                value={formData.inviteCode}
+                                onChange={handleChange}
                             />
                         </div>
                     </div>

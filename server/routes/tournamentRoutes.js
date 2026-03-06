@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Tournament = require('../models/Tournament');
+const Team = require('../models/Team');
 const { protect, organizer } = require('../middleware/authMiddleware');
 const { deductTournamentEntryFee } = require('../services/escrowService');
 const { blockNewTournaments, blockEntryFeeRegistration } = require('../middleware/protectionMiddleware');
@@ -86,8 +87,16 @@ router.post('/:id/register', protect, blockEntryFeeRegistration, async (req, res
             return res.status(400).json({ message: 'Tournament functionality is locked or finished' });
         }
 
-        if (tournament.participants.some(p => p.toString() === req.user._id.toString())) {
-            return res.status(400).json({ message: 'User already registered' });
+        const team = await Team.findOne({ members: req.user._id });
+        if (!team) {
+            return res.status(400).json({ message: 'You must be in a team to register for a tournament' });
+        }
+        if (team.captain.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only team captains can register the team for a tournament' });
+        }
+
+        if (tournament.participants.some(p => p.toString() === team._id.toString())) {
+            return res.status(400).json({ message: 'Team is already registered for this tournament' });
         }
 
         if (tournament.participants.length >= tournament.maxParticipants) {
@@ -101,10 +110,10 @@ router.post('/:id/register', protect, blockEntryFeeRegistration, async (req, res
             return res.status(402).json({ message: feeError.message });
         }
 
-        tournament.participants.push(req.user._id);
+        tournament.participants.push(team._id);
         await tournament.save();
 
-        res.status(200).json({ message: 'Successfully registered for tournament' });
+        res.status(200).json({ message: 'Successfully registered team for tournament' });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -117,6 +126,14 @@ const { generateMatches } = require('../services/matchmakingService');
 
 router.post('/:id/start', protect, organizer, async (req, res) => {
     try {
+        const tournament = await Tournament.findById(req.params.id);
+        if (!tournament) {
+            return res.status(404).json({ message: 'Tournament not found' });
+        }
+        if (tournament.participants.length < 4) {
+            return res.status(400).json({ message: 'Not enough teams to start tournament' });
+        }
+
         const matches = await generateMatches(req.params.id);
         res.status(200).json({ message: 'Tournament started', matches });
     } catch (err) {
