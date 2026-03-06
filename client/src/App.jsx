@@ -8,6 +8,7 @@ import TournamentList from './pages/Tournament/TournamentList';
 import CreateTournament from './pages/Tournament/CreateTournament';
 import TournamentDetails from './pages/Tournament/TournamentDetails';
 import MatchRoom from './pages/Tournament/MatchRoom';
+import TeamDashboard from './pages/Team/TeamDashboard';
 import Rankings from './pages/Rankings';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import UserManagement from './pages/Admin/UserManagement';
@@ -43,6 +44,10 @@ function App() {
                   <Route path="/admin/integrity" element={<IntegrityDashboard />} />
                   <Route path="/admin/ai" element={<AIHealthDashboard />} />
                   <Route path="/admin/risk" element={<RiskConsole />} />
+                </Route>
+
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/team" element={<TeamDashboard />} />
                 </Route>
 
                 <Route path="/rankings" element={<Rankings />} />
