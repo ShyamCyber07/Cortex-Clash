@@ -22,14 +22,21 @@ const TeamDashboard = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                setTeam(data);
-                setView('dashboard');
+                if (data && data._id) {
+                    setTeam(data);
+                    setView('dashboard');
+                } else {
+                    setTeam(null);
+                    setView('none');
+                }
             } else {
                 setTeam(null);
                 setView('none');
             }
         } catch (err) {
             console.error('Error fetching team:', err);
+            setTeam(null);
+            setView('none');
         } finally {
             setLoading(false);
         }
