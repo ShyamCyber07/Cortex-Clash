@@ -32,6 +32,7 @@ const Navbar = () => {
                         <div className="ml-10 flex items-baseline space-x-8">
                             <Link to="/" className="text-gray-300 hover:text-indigo-400 px-3 py-2 rounded-md font-medium transition-colors">Home</Link>
                             <Link to="/tournaments" className="text-gray-300 hover:text-indigo-400 px-3 py-2 rounded-md font-medium transition-colors">Tournaments</Link>
+                            <Link to="/team" className="text-gray-300 hover:text-indigo-400 px-3 py-2 rounded-md font-medium transition-colors">Team</Link>
                             <Link to="/rankings" className="text-gray-300 hover:text-indigo-400 px-3 py-2 rounded-md font-medium transition-colors">Rankings</Link>
                             <Link to="/analytics" className="text-gray-300 hover:text-indigo-400 px-3 py-2 rounded-md font-medium transition-colors">Analytics</Link>
                         </div>
@@ -84,6 +85,7 @@ const Navbar = () => {
                     <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                         <Link to="/" className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Home</Link>
                         <Link to="/tournaments" className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Tournaments</Link>
+                        <Link to="/team" className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Team</Link>
                         <Link to="/rankings" className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Rankings</Link>
 
                         {user ? (

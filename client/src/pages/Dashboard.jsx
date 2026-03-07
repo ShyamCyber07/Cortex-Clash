@@ -1,13 +1,44 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Trophy, Users, Activity, LogOut } from 'lucide-react';
+import { Plus, Trophy, Users, Activity, LogOut, Shield, UserPlus, LogIn } from 'lucide-react';
 import PlayerAnalytics from '../components/Analytics/PlayerAnalytics';
 
 const Dashboard = () => {
     const user = JSON.parse(localStorage.getItem('user'));
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview'); // For future tabs if needed
+
+    const [team, setTeam] = useState(null);
+    const [teamLoading, setTeamLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchTeamInfo = async () => {
+            try {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/teams/my-team`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data._id) {
+                        setTeam(data);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching team on dashboard:', error);
+            } finally {
+                setTeamLoading(false);
+            }
+        };
+
+        if (user) {
+            fetchTeamInfo();
+        }
+    }, [user]);
+
     if (!user) {
         window.location.href = '/login';
         return null;
@@ -62,6 +93,44 @@ const Dashboard = () => {
                         Today, 8:00 PM
                     </div>
                 </div>
+            </div>
+
+            {/* Team Section */}
+            <div className="mt-8 glass-card">
+                <div className="flex items-center gap-3 mb-6">
+                    <Shield className="h-6 w-6 text-indigo-500" />
+                    <h3 className="text-xl font-bold text-white">Your Team</h3>
+                </div>
+
+                {teamLoading ? (
+                    <div className="text-gray-400">Loading team data...</div>
+                ) : team ? (
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800/30 p-4 rounded-lg border border-slate-700/50">
+                        <div>
+                            <h4 className="text-2xl font-bold text-white mb-1">{team.name}</h4>
+                            <div className="flex items-center gap-4 text-sm">
+                                <span className="text-gray-400">Captain: <span className="text-indigo-400 font-medium">{team.captain?.username}</span></span>
+                                <span className="text-gray-400 flex items-center gap-1"><Users className="h-4 w-4" /> {team.members?.length} Members</span>
+                            </div>
+                        </div>
+                        <Link to="/team" className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg font-bold text-white transition-colors">
+                            Manage Team
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="bg-slate-800/30 p-6 rounded-lg border border-slate-700/50 text-center">
+                        <h4 className="text-lg font-bold text-gray-300 mb-2">No Team Found</h4>
+                        <p className="text-sm text-gray-400 mb-6 font-medium">You need an active team to register for tournaments.</p>
+                        <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-sm mx-auto">
+                            <Link to="/team" className="flex-1 btn-primary py-2 px-4 rounded-lg font-bold flex items-center justify-center gap-2">
+                                <UserPlus className="h-4 w-4" /> Create Team
+                            </Link>
+                            <Link to="/team" className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-4 rounded-lg font-bold text-white flex items-center justify-center gap-2 transition-colors">
+                                <LogIn className="h-4 w-4" /> Join Team
+                            </Link>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Recent Matches */}
