@@ -6,7 +6,7 @@ const { protect } = require('../middleware/authMiddleware');
 // @desc    Create a new team
 // @route   POST /api/v1/teams/create
 // @access  Private (Logged-in User)
-router.post('/create', protect, async (req, res) => {
+router.post('/create', protect, async (req, res, next) => {
     try {
         const { name, maxMembers } = req.body;
 
@@ -26,14 +26,14 @@ router.post('/create', protect, async (req, res) => {
         const createdTeam = await team.save();
         res.status(201).json(createdTeam);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Join an existing team via invite code
 // @route   POST /api/v1/teams/join
 // @access  Private
-router.post('/join', protect, async (req, res) => {
+router.post('/join', protect, async (req, res, next) => {
     try {
         const { inviteCode } = req.body;
         if (!inviteCode) {
@@ -58,14 +58,14 @@ router.post('/join', protect, async (req, res) => {
 
         res.status(200).json({ message: 'Successfully joined team', team });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Get the current user's team
 // @route   GET /api/v1/teams/my-team
 // @access  Private
-router.get('/my-team', protect, async (req, res) => {
+router.get('/my-team', protect, async (req, res, next) => {
     try {
         const team = await Team.findOne({ members: req.user._id })
             .populate('captain', 'username')
@@ -76,7 +76,7 @@ router.get('/my-team', protect, async (req, res) => {
         }
         res.status(200).json(team);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
