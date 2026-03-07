@@ -26,6 +26,10 @@ const Dashboard = () => {
                     if (data && data._id) {
                         setTeam(data);
                     }
+                } else if (response.status === 404) {
+                    setTeam(null); // Explicitly handle 404 and don't log an error
+                } else {
+                    console.error('Failed to fetch team data:', response.status);
                 }
             } catch (error) {
                 console.error('Error fetching team on dashboard:', error);
