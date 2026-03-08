@@ -1,6 +1,4 @@
 const mongoose = require('mongoose');
-const crypto = require('crypto');
-
 const teamSchema = new mongoose.Schema({
     name: { type: String, required: true },
     captain: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -12,8 +10,8 @@ const teamSchema = new mongoose.Schema({
 // Pre-save hook to generate invite code automatically
 teamSchema.pre('save', function (next) {
     if (!this.inviteCode) {
-        const randomStr = crypto.randomBytes(2).toString('hex').toUpperCase();
-        this.inviteCode = `CC-${randomStr}`;
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        this.inviteCode = `CC-${random}`;
     }
     next();
 });

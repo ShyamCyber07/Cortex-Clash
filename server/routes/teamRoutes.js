@@ -24,7 +24,14 @@ router.post('/create', protect, async (req, res, next) => {
         });
 
         const createdTeam = await team.save();
-        res.status(201).json(createdTeam);
+        res.status(201).json({
+            _id: createdTeam._id,
+            name: createdTeam.name,
+            inviteCode: createdTeam.inviteCode,
+            captain: createdTeam.captain,
+            members: createdTeam.members,
+            maxMembers: createdTeam.maxMembers
+        });
     } catch (err) {
         next(err);
     }
