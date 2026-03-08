@@ -10,7 +10,7 @@ const { getIntegrityCache, setIntegrityCache, invalidateIntegrityCache } = requi
 // @desc    Get Integrity Overview
 // @route   GET /api/v1/integrity/overview
 // @access  Private/Admin
-router.get('/overview', protect, admin, async (req, res) => {
+router.get('/overview', protect, admin, async (req, res, next) => {
     try {
         const now = Date.now();
         const cache = getIntegrityCache();
@@ -90,14 +90,14 @@ router.get('/overview', protect, admin, async (req, res) => {
 
         res.json(result);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Update Integrity Status
 // @route   PUT /api/v1/integrity/status/:userId
 // @access  Private/Admin
-router.put('/status/:userId', protect, admin, async (req, res) => {
+router.put('/status/:userId', protect, admin, async (req, res, next) => {
     try {
         const { status, suspicionScore } = req.body;
         const user = await User.findById(req.params.userId);
@@ -121,7 +121,7 @@ router.put('/status/:userId', protect, admin, async (req, res) => {
 
         res.json(user.integrity);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 

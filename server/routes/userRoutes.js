@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 // Register User
-router.post('/register', async (req, res) => {
+router.post('/register', async (req, res, next) => {
     const { username, email, password } = req.body;
     try {
         const emailLower = email.toLowerCase();
@@ -26,12 +26,12 @@ router.post('/register', async (req, res) => {
             token
         });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        next(error);
     }
 });
 
 // Login User
-router.post('/login', async (req, res) => {
+router.post('/login', async (req, res, next) => {
     const { email, password } = req.body;
     try {
         const emailLower = email.toLowerCase();
@@ -65,7 +65,7 @@ router.post('/login', async (req, res) => {
         }
     } catch (error) {
         console.error(`[LOGIN ERROR] ${error.message}`);
-        res.status(500).json({ message: error.message });
+        next(error);
     }
 });
 
@@ -74,19 +74,19 @@ const { protect, admin } = require('../middleware/authMiddleware');
 // @desc    Get all users (Admin)
 // @route   GET /api/v1/users
 // @access  Private/Admin
-router.get('/', protect, admin, async (req, res) => {
+router.get('/', protect, admin, async (req, res, next) => {
     try {
         const users = await User.find({}).select('-password');
         res.json(users);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Update user role (Admin)
 // @route   PUT /api/v1/users/:id/role
 // @access  Private/Admin
-router.put('/:id/role', protect, admin, async (req, res) => {
+router.put('/:id/role', protect, admin, async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
@@ -95,14 +95,14 @@ router.put('/:id/role', protect, admin, async (req, res) => {
         await user.save();
         res.json({ message: 'User role updated', user });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Get Flagged Users (Integrity)
 // @route   GET /api/v1/users/flagged
 // @access  Private/Admin
-router.get('/flagged', protect, admin, async (req, res) => {
+router.get('/flagged', protect, admin, async (req, res, next) => {
     try {
         // Find users where integrity.isFlagged is true OR integrity.suspicionScore > 0
         const users = await User.find({
@@ -114,7 +114,7 @@ router.get('/flagged', protect, admin, async (req, res) => {
 
         res.json(users);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 

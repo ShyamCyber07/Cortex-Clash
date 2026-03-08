@@ -9,21 +9,21 @@ const { blockNewTournaments, blockEntryFeeRegistration } = require('../middlewar
 // @desc    Get all tournaments
 // @route   GET /api/tournaments
 // @access  Public
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
         const tournaments = await Tournament.find()
             .populate('organizer', 'username')
             .populate('game', 'name icon');
         res.json(tournaments);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Create a tournament
 // @route   POST /api/tournaments
 // @access  Organizer/Admin
-router.post('/', protect, organizer, blockNewTournaments, async (req, res) => {
+router.post('/', protect, organizer, blockNewTournaments, async (req, res, next) => {
     const { name, description, game, matchFormat, format, startDate, endDate, rules } = req.body;
 
     const tournament = new Tournament({
@@ -44,14 +44,14 @@ router.post('/', protect, organizer, blockNewTournaments, async (req, res) => {
         const createdTournament = await tournament.save();
         res.status(201).json(createdTournament);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Get tournament by ID
 // @route   GET /api/tournaments/:id
 // @access  Public
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
     try {
         const tournament = await Tournament.findById(req.params.id)
             .populate('organizer', 'username email')
@@ -67,7 +67,7 @@ router.get('/:id', async (req, res) => {
             res.status(404).json({ message: 'Tournament not found' });
         }
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
@@ -75,7 +75,7 @@ router.get('/:id', async (req, res) => {
 // @desc    Register for a tournament
 // @route   POST /api/tournaments/:id/register
 // @access  Private (Player)
-router.post('/:id/register', protect, blockEntryFeeRegistration, async (req, res) => {
+router.post('/:id/register', protect, blockEntryFeeRegistration, async (req, res, next) => {
     try {
         const tournament = await Tournament.findById(req.params.id);
 
@@ -107,15 +107,15 @@ router.post('/:id/register', protect, blockEntryFeeRegistration, async (req, res
         try {
             await deductTournamentEntryFee(req.user._id, tournament._id);
         } catch (feeError) {
-            return res.status(402).json({ message: feeError.message });
-        }
+        next(feeError);
+    }
 
         tournament.participants.push(team._id);
         await tournament.save();
 
         res.status(200).json({ message: 'Successfully registered team for tournament' });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
@@ -124,7 +124,7 @@ router.post('/:id/register', protect, blockEntryFeeRegistration, async (req, res
 // @access  Organizer/Admin
 const { generateMatches } = require('../services/matchmakingService');
 
-router.post('/:id/start', protect, organizer, async (req, res) => {
+router.post('/:id/start', protect, organizer, async (req, res, next) => {
     try {
         const tournament = await Tournament.findById(req.params.id);
         if (!tournament) {
@@ -137,7 +137,7 @@ router.post('/:id/start', protect, organizer, async (req, res) => {
         const matches = await generateMatches(req.params.id);
         res.status(200).json({ message: 'Tournament started', matches });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        next(err);
     }
 });
 

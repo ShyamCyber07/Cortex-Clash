@@ -8,7 +8,7 @@ const { protect } = require('../middleware/authMiddleware');
 // @desc    Get Player Analytics
 // @route   GET /api/analytics/player/:id
 // @access  Private
-router.get('/player/:id', protect, async (req, res) => {
+router.get('/player/:id', protect, async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id)
             .populate({
@@ -65,14 +65,14 @@ router.get('/player/:id', protect, async (req, res) => {
             recentMatches: user.matchHistory
         });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Get Tournament Analytics
 // @route   GET /api/analytics/tournament/:id
 // @access  Private
-router.get('/tournament/:id', protect, async (req, res) => {
+router.get('/tournament/:id', protect, async (req, res, next) => {
     try {
         const tournament = await Tournament.findById(req.params.id)
             .populate({
@@ -120,7 +120,7 @@ router.get('/tournament/:id', protect, async (req, res) => {
             }
         });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 

@@ -3,19 +3,19 @@ const router = express.Router();
 const Game = require('../models/Game');
 
 // Get all games
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
         const games = await Game.find({ enabled: true }).sort({ name: 1 });
         res.json(games);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 const { protect, admin } = require('../middleware/authMiddleware');
 
 // Seed games (optional, good for dev setup)
-router.post('/seed', protect, admin, async (req, res) => {
+router.post('/seed', protect, admin, async (req, res, next) => {
     try {
         const games = [
             {
@@ -81,14 +81,14 @@ router.post('/seed', protect, admin, async (req, res) => {
         res.status(201).json({ message: 'Games seeded successfully' });
 
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Create a new game
 // @route   POST /api/v1/games
 // @access  Private/Admin
-router.post('/', protect, admin, async (req, res) => {
+router.post('/', protect, admin, async (req, res, next) => {
     try {
         const { name, slug, description, supportedFormats, maxPlayersPerTeam, scoringType, defaultRules, icon, banner } = req.body;
         const game = await Game.create({
@@ -104,14 +104,14 @@ router.post('/', protect, admin, async (req, res) => {
         });
         res.status(201).json(game);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Update a game
 // @route   PUT /api/v1/games/:id
 // @access  Private/Admin
-router.put('/:id', protect, admin, async (req, res) => {
+router.put('/:id', protect, admin, async (req, res, next) => {
     try {
         const game = await Game.findById(req.params.id);
         if (!game) return res.status(404).json({ message: 'Game not found' });
@@ -120,14 +120,14 @@ router.put('/:id', protect, admin, async (req, res) => {
         await game.save();
         res.json(game);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Delete a game
 // @route   DELETE /api/v1/games/:id
 // @access  Private/Admin
-router.delete('/:id', protect, admin, async (req, res) => {
+router.delete('/:id', protect, admin, async (req, res, next) => {
     try {
         const game = await Game.findById(req.params.id);
         if (!game) return res.status(404).json({ message: 'Game not found' });
@@ -135,7 +135,7 @@ router.delete('/:id', protect, admin, async (req, res) => {
         await game.deleteOne();
         res.json({ message: 'Game removed' });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 

@@ -13,7 +13,7 @@ const { getSystemState } = require('../services/systemStateService');
 
 const { protect, admin } = require('../middleware/authMiddleware');
 
-router.get('/health', protect, admin, async (req, res) => {
+router.get('/health', protect, admin, async (req, res, next) => {
     try {
         // Mongoose 1 = connected
         const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -25,6 +25,7 @@ router.get('/health', protect, admin, async (req, res) => {
             if (client && client.status === 'ready') redisStatus = 'connected';
         } catch (e) {
             console.error('[SYSTEM] Redis check failed:', e.message);
+            next(e);
         }
 
         const queues = [
@@ -57,7 +58,7 @@ router.get('/health', protect, admin, async (req, res) => {
 
                 queueMetrics[queue.name] = { depth, failed: counts.failed };
             } catch (err) {
-                queueMetrics[queue.name] = { depth: 0, failed: 0, status: 'unavailable' };
+                next(err);
             }
         }
 
@@ -82,11 +83,11 @@ router.get('/health', protect, admin, async (req, res) => {
         res.json(responsePayload);
 
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err);
     }
 });
 
-router.get('/metrics', protect, admin, async (req, res) => {
+router.get('/metrics', protect, admin, async (req, res, next) => {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -106,6 +107,7 @@ router.get('/metrics', protect, admin, async (req, res) => {
             }
         } catch (e) {
             console.warn('[SYSTEM] Failed to fetch redis memory');
+            next(e);
         }
 
         const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -148,11 +150,11 @@ router.get('/metrics', protect, admin, async (req, res) => {
             queueRetryVolume
         });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err);
     }
 });
 
-router.post('/chaos', protect, admin, (req, res) => {
+router.post('/chaos', protect, admin, (req, res, next) => {
     const { enable, ttl } = req.body;
     if (typeof enable !== 'boolean') {
         return res.status(400).json({ message: 'Request body must map { enable: boolean }' });
@@ -167,7 +169,7 @@ router.post('/chaos', protect, admin, (req, res) => {
     });
 });
 
-router.get('/risk', protect, admin, async (req, res) => {
+router.get('/risk', protect, admin, async (req, res, next) => {
     try {
         const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -193,31 +195,31 @@ router.get('/risk', protect, admin, async (req, res) => {
             queueBacklogGrowthRate
         });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err);
     }
 });
 
-router.get('/state', protect, admin, async (req, res) => {
+router.get('/state', protect, admin, async (req, res, next) => {
     try {
         const stateData = await getSystemState();
         res.json(stateData);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err);
     }
 });
 
-router.get('/state-history', protect, admin, async (req, res) => {
+router.get('/state-history', protect, admin, async (req, res, next) => {
     // Only import locally or at top to avoid circular dependency
     const SystemStateLog = require('../models/SystemStateLog');
     try {
         const history = await SystemStateLog.find().sort({ createdAt: -1 }).limit(50);
         res.json(history);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err);
     }
 });
 
-router.post('/invariant-check', protect, admin, async (req, res) => {
+router.post('/invariant-check', protect, admin, async (req, res, next) => {
     const { validateInvariants } = require('../services/invariantValidator');
     try {
         const validation = await validateInvariants();
@@ -232,11 +234,11 @@ router.post('/invariant-check', protect, admin, async (req, res) => {
 
         res.json({ pass: true, message: 'All production invariants validated successfully.' });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err);
     }
 });
 
-router.post('/economy-audit', protect, admin, async (req, res) => {
+router.post('/economy-audit', protect, admin, async (req, res, next) => {
     const { runLightReconciliation, runDeepReconciliation } = require('../services/economicReconciliationService');
     const { deep } = req.query; // e.g. /economy-audit?deep=true
 
@@ -259,7 +261,7 @@ router.post('/economy-audit', protect, admin, async (req, res) => {
 
         res.json({ pass: true, type: reconciliationResult.type, message: 'Economic reconciliation completed successfully with no discrepancies.' });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        next(err);
     }
 });
 

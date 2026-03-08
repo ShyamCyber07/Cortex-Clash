@@ -11,7 +11,7 @@ const { integrityQueue, aiMetricsQueue, tournamentQueue } = require('../config/q
 // @desc    Get match by ID
 // @route   GET /api/matches/:id
 // @access  Public
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
     try {
         const match = await Match.findById(req.params.id)
             .populate('participants', 'username avatar stats')
@@ -40,14 +40,14 @@ router.get('/:id', async (req, res) => {
 
         res.json(responseObj);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Get match prediction
 // @route   GET /api/matches/:id/prediction
 // @access  Public (or Protected)
-router.get('/:id/prediction', async (req, res) => {
+router.get('/:id/prediction', async (req, res, next) => {
     try {
         const match = await Match.findById(req.params.id)
             .populate('participants')
@@ -124,7 +124,7 @@ router.get('/:id/prediction', async (req, res) => {
 
     } catch (err) {
         console.error(`[PREDICTION ERROR] ${err.message}`);
-        res.status(500).json({ message: 'Prediction service unavailable' });
+        next(err);
     }
 });
 
@@ -134,7 +134,7 @@ const { validateMatchResult } = require('../services/matchValidationService');
 // @desc    Submit Match Result
 // @route   POST /api/matches/:id/result
 // @access  Private
-router.post('/:id/result', protect, async (req, res) => {
+router.post('/:id/result', protect, async (req, res, next) => {
     try {
         const { winnerTeamId } = req.body;
 
@@ -157,14 +157,14 @@ router.post('/:id/result', protect, async (req, res) => {
 
         res.status(200).json(match);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Confirm Match Result (Step 2)
 // @route   POST /api/matches/:id/confirm
 // @access  Private (Opponent Only)
-router.post('/:id/confirm', protect, async (req, res) => {
+router.post('/:id/confirm', protect, async (req, res, next) => {
     const io = require('../socket').getIO();
     console.log(`[MATCH] Confirmation attempt for ${req.params.id} by ${req.user.username}`);
 
@@ -218,14 +218,14 @@ router.post('/:id/confirm', protect, async (req, res) => {
         res.json(match);
     } catch (err) {
         console.error(`[MATCH] Error in confirmation: ${err.message}`);
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Dispute Match Result
 // @route   POST /api/matches/:id/dispute
 // @access  Private
-router.post('/:id/dispute', protect, async (req, res) => {
+router.post('/:id/dispute', protect, async (req, res, next) => {
     const io = require('../socket').getIO();
     try {
         const match = await Match.findById(req.params.id);
@@ -239,7 +239,7 @@ router.post('/:id/dispute', protect, async (req, res) => {
 
         res.json(match);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 

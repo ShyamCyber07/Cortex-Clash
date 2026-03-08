@@ -9,32 +9,32 @@ const { applySeasonRollover } = require('../services/seasonAutomator');
 // @desc    Get All Seasons
 // @route   GET /api/v1/seasons
 // @access  Public
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
         const seasons = await Season.find().sort({ startDate: -1 });
         res.json(seasons);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Get Active Season
 // @route   GET /api/v1/seasons/active
 // @access  Public
-router.get('/active', async (req, res) => {
+router.get('/active', async (req, res, next) => {
     try {
         const season = await Season.findOne({ isActive: true });
         if (!season) return res.status(404).json({ message: 'No active season found' });
         res.json(season);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Create Season
 // @route   POST /api/v1/seasons
 // @access  Private (Admin)
-router.post('/', protect, admin, async (req, res) => {
+router.post('/', protect, admin, async (req, res, next) => {
     const { name, startDate, endDate, isActive, games, rules } = req.body;
     try {
         const season = await Season.create({
@@ -52,14 +52,14 @@ router.post('/', protect, admin, async (req, res) => {
 
         res.status(201).json(season);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Seed Initial Season
 // @route   POST /api/v1/seasons/seed
 // @access  Private (Admin)
-router.post('/seed', protect, admin, async (req, res) => {
+router.post('/seed', protect, admin, async (req, res, next) => {
     try {
         const existing = await Season.countDocuments();
         if (existing > 0) return res.status(400).json({ message: 'Seasons already exist' });
@@ -81,14 +81,14 @@ router.post('/seed', protect, admin, async (req, res) => {
 
         res.status(201).json({ message: 'Season 1 created' });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Update Season
 // @route   PUT /api/v1/seasons/:id
 // @access  Private/Admin
-router.put('/:id', protect, admin, async (req, res) => {
+router.put('/:id', protect, admin, async (req, res, next) => {
     try {
         const season = await Season.findById(req.params.id);
         if (!season) return res.status(404).json({ message: 'Season not found' });
@@ -104,14 +104,14 @@ router.put('/:id', protect, admin, async (req, res) => {
 
         res.json(season);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Delete Season
 // @route   DELETE /api/v1/seasons/:id
 // @access  Private/Admin
-router.delete('/:id', protect, admin, async (req, res) => {
+router.delete('/:id', protect, admin, async (req, res, next) => {
     try {
         const season = await Season.findById(req.params.id);
         if (!season) return res.status(404).json({ message: 'Season not found' });
@@ -119,7 +119,7 @@ router.delete('/:id', protect, admin, async (req, res) => {
         await season.deleteOne();
         res.json({ message: 'Season removed' });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 

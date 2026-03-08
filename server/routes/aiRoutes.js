@@ -6,7 +6,7 @@ const { protect, admin } = require('../middleware/authMiddleware');
 // @desc    Get AI metrics over the last 100 matches
 // @route   GET /api/v1/ai/metrics
 // @access  Private/Admin
-router.get('/metrics', protect, admin, async (req, res) => {
+router.get('/metrics', protect, admin, async (req, res, next) => {
     try {
         const historyLimit = 100;
         const recentPerformances = await AIPerformance.find({})
@@ -48,7 +48,7 @@ router.get('/metrics', protect, admin, async (req, res) => {
 
     } catch (err) {
         console.error(`[AI ROUTES] Error fetching metrics: ${err.message}`);
-        res.status(500).json({ message: 'Error fetching AI metrics' });
+        next(err);
     }
 });
 

@@ -6,7 +6,7 @@ const Game = require('../models/Game');
 // @desc    Get Global Leaderboard
 // @route   GET /api/v1/leaderboard
 // @access  Public
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
         const users = await User.find()
             .sort({ 'stats.rankPoints': -1 })
@@ -29,14 +29,14 @@ router.get('/', async (req, res) => {
 
         res.json(leaderboard);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 
 // @desc    Get Game-Specific Leaderboard
 // @route   GET /api/v1/leaderboard/:gameId
 // @access  Public
-router.get('/:gameId', async (req, res) => {
+router.get('/:gameId', async (req, res, next) => {
     try {
         const { gameId } = req.params;
         const game = await Game.findById(gameId);
@@ -83,7 +83,7 @@ router.get('/:gameId', async (req, res) => {
         });
 
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 });
 

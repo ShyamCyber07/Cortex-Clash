@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 
-router.get('/health', async (req, res) => {
+router.get('/health', async (req, res, next) => {
     const healthcheck = {
         uptime: process.uptime(),
         message: 'OK',
@@ -18,8 +18,7 @@ router.get('/health', async (req, res) => {
         }
         res.send(healthcheck);
     } catch (error) {
-        healthcheck.message = error;
-        res.status(503).send(healthcheck);
+        next(error);
     }
 });
 
