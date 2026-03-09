@@ -7,12 +7,14 @@ const globalMaintenanceCheck = async (req, res, next) => {
 
         // Let admins override this so they can toggle chaos OFF, fix system, login, etc
         if (req.user && req.user.role === 'admin') {
-            return next();
+            next();
+            return;
         }
 
         // Allow user login so people aren't entirely logged out during critical phase
         if (req.path.includes('/login')) {
-            return next();
+            next();
+            return;
         }
 
         if (state === 'CRITICAL') {
