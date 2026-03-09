@@ -10,12 +10,6 @@ router.post('/create', protect, async (req, res, next) => {
     try {
         const { name, maxMembers } = req.body;
 
-        // Prevent user from creating multiple teams if already a captain
-        const existingTeam = await Team.findOne({ captain: req.user._id });
-        if (existingTeam) {
-            return res.status(400).json({ message: 'You are already captain of a team' });
-        }
-
         const team = new Team({
             name,
             captain: req.user._id,
@@ -24,14 +18,8 @@ router.post('/create', protect, async (req, res, next) => {
         });
 
         const createdTeam = await team.save();
-        res.status(201).json({
-            _id: createdTeam._id,
-            name: createdTeam.name,
-            inviteCode: createdTeam.inviteCode,
-            captain: createdTeam.captain,
-            members: createdTeam.members,
-            maxMembers: createdTeam.maxMembers
-        });
+
+        res.status(201).json(createdTeam);
     } catch (err) {
         next(err);
     }

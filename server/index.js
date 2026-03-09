@@ -145,7 +145,7 @@ app.use(`${apiPrefix}/analytics`, analyticsRoutes);
 app.use(`${apiPrefix}/integrity`, integrityRoutes);
 app.use(`${apiPrefix}/ai`, aiRoutes);
 app.use(`${apiPrefix}/system`, systemRoutes);
-app.use(`${apiPrefix}/teams`, teamRoutes);
+app.use('/api/v1/teams', teamRoutes);
 
 // Root route
 app.get('/', (req, res) => {
@@ -159,13 +159,8 @@ app.use((req, res) => {
 
 // 8. Error Handling
 app.use((err, req, res, next) => {
-    logger.error(`${err.message}`, { stack: err.stack, correlationId: req.correlationId });
-    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-    res.status(statusCode).json({
-        message: err.message,
-        correlationId: req.correlationId,
-        stack: process.env.NODE_ENV === 'production' ? null : err.stack,
-    });
+    console.error(err);
+    res.status(500).json({ message: err.message });
 });
 
 // 9. Startup Sequence
